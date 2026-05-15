@@ -3,10 +3,130 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Cloz Digital</title>
+    <meta name="theme-color" content="#0B0B0D" />
+
+    <!-- Primary SEO -->
+    <title>Cloz Digital — Premium Web Design, Hosting & Ongoing Care</title>
+    <meta name="description" content="Cloz Digital builds and maintains premium websites for businesses in Bosnia and across the Balkans. Custom design, hosting, SEO, and ongoing care — handled end to end." />
+    <meta name="keywords" content="web design Bosnia, website development Sarajevo, premium web agency, website hosting, website maintenance, SEO Bosnia, Cloz Digital" />
+    <meta name="author" content="Cloz Digital" />
+    <meta name="robots" content="index, follow" />
+    <link rel="canonical" href="https://www.cloz.digital/" />
+
+    <!-- Open Graph -->
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Cloz Digital — Premium Web Design, Hosting & Ongoing Care" />
+    <meta property="og:description" content="Custom websites, hosting, SEO, and ongoing care for businesses that take their online presence seriously." />
+    <meta property="og:url" content="https://www.cloz.digital/" />
+    <meta property="og:site_name" content="Cloz Digital" />
+    <meta property="og:locale" content="en_US" />
+    <meta property="og:locale:alternate" content="bs_BA" />
+
+    <!-- Twitter / X -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Cloz Digital — Premium Web Design, Hosting & Ongoing Care" />
+    <meta name="twitter:description" content="Custom websites, hosting, SEO, and ongoing care for businesses that take their online presence seriously." />
+
+    <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+
+    <!-- Structured Data — Organization + WebSite + Service offerings -->
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@graph": [
+          {
+            "@type": "Organization",
+            "@id": "https://www.cloz.digital/#organization",
+            "name": "Cloz Digital",
+            "url": "https://www.cloz.digital",
+            "description": "Premium web design, hosting, SEO, and ongoing maintenance for businesses in Bosnia and across the Balkans.",
+            "email": "general@cloz.digital",
+            "address": {
+              "@type": "PostalAddress",
+              "addressLocality": "Sarajevo",
+              "addressCountry": "BA"
+            },
+            "areaServed": ["BA", "HR", "RS", "ME", "SI", "MK", "XK", "AL"],
+            "knowsLanguage": ["en", "bs", "hr", "sr"],
+            "contactPoint": [
+              {
+                "@type": "ContactPoint",
+                "email": "general@cloz.digital",
+                "contactType": "customer service",
+                "availableLanguage": ["en", "bs"]
+              },
+              {
+                "@type": "ContactPoint",
+                "email": "anes@cloz.digital",
+                "contactType": "sales"
+              },
+              {
+                "@type": "ContactPoint",
+                "email": "denis@cloz.digital",
+                "contactType": "customer support"
+              },
+              {
+                "@type": "ContactPoint",
+                "email": "billing@cloz.digital",
+                "contactType": "billing support"
+              }
+            ]
+          },
+          {
+            "@type": "WebSite",
+            "@id": "https://www.cloz.digital/#website",
+            "url": "https://www.cloz.digital",
+            "name": "Cloz Digital",
+            "publisher": { "@id": "https://www.cloz.digital/#organization" },
+            "inLanguage": "en"
+          },
+          {
+            "@type": "ProfessionalService",
+            "name": "Cloz Digital",
+            "image": "https://www.cloz.digital/og.png",
+            "url": "https://www.cloz.digital",
+            "telephone": "",
+            "priceRange": "200 BAM – 1500 BAM",
+            "address": {
+              "@type": "PostalAddress",
+              "addressLocality": "Sarajevo",
+              "addressCountry": "BA"
+            },
+            "serviceType": ["Web Design", "Web Development", "Web Hosting", "SEO Services", "Website Maintenance"],
+            "hasOfferCatalog": {
+              "@type": "OfferCatalog",
+              "name": "Cloz Digital Packages",
+              "itemListElement": [
+                {
+                  "@type": "Offer",
+                  "name": "Launch Care",
+                  "description": "Custom 5-page website with hosting setup and 30 days of post-launch support.",
+                  "price": "800",
+                  "priceCurrency": "BAM"
+                },
+                {
+                  "@type": "Offer",
+                  "name": "Growth Care",
+                  "description": "Full 12-page custom site with SEO, CMS, performance optimization, and 3 months maintenance.",
+                  "price": "1500",
+                  "priceCurrency": "BAM"
+                },
+                {
+                  "@type": "Offer",
+                  "name": "Presence Care",
+                  "description": "Monthly hosting, security, backups, monitoring, and content updates.",
+                  "price": "200",
+                  "priceCurrency": "BAM"
+                }
+              ]
+            }
+          }
+        ]
+      }
+    </script>
   </head>
   <body>
     <div id="root"></div>

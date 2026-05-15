@@ -1,246 +1,463 @@
-import { ArrowUpRight, ArrowRight, Check, Globe, Paintbrush, Shield, RefreshCw, Zap, Monitor } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
+import {
+  ArrowUpRight, ArrowRight, Check, Globe, Paintbrush, Shield, RefreshCw,
+  Zap, Monitor, Search, Mail, Compass, PenTool, Code2, Rocket, HeartPulse,
+  Plus, Minus, Sparkles, MapPin, Languages, Smartphone, Gauge,
+} from 'lucide-react'
+
+// ══════════════════════════════════════════════════════════════
+//  HOMEPAGE — Production Landing Page
+//  Premium positioning. Real packages. No fabricated portfolio.
+// ══════════════════════════════════════════════════════════════
 
 const services = [
-  { icon: Paintbrush, title: 'Website Design', desc: 'Custom-built websites that reflect your business quality. No templates, no shortcuts.' },
-  { icon: RefreshCw, title: 'Website Redesign', desc: 'Transform an outdated site into a modern, conversion-focused presence.' },
-  { icon: Globe, title: 'Hosting & Setup', desc: 'Fast, secure hosting with proper DNS, SSL, and deployment — handled completely.' },
-  { icon: Shield, title: 'Ongoing Maintenance', desc: 'Updates, backups, security patches, and content changes — you never worry about it.' },
-  { icon: Monitor, title: 'Website Monitoring', desc: 'Uptime tracking, performance checks, and immediate response when something breaks.' },
-  { icon: Zap, title: 'Care Plans', desc: 'Monthly support packages that keep your site healthy, current, and performing.' },
+  { icon: Paintbrush, title: 'Website Design',          desc: 'Custom-built sites that reflect the quality of your business — no templates, no shortcuts.' },
+  { icon: RefreshCw,  title: 'Redesigns',               desc: 'Modernize an outdated presence into a conversion-focused, fast, mobile-first site.' },
+  { icon: Globe,      title: 'Hosting & Setup',         desc: 'Fast, secure hosting with proper DNS, SSL, and deployment — fully managed.' },
+  { icon: Shield,     title: 'Ongoing Maintenance',     desc: 'Updates, backups, security patches, and content edits — handled so you never worry.' },
+  { icon: Search,     title: 'SEO Optimization',        desc: 'Technical SEO, structured data, performance tuning, and on-page strategy that compounds.' },
+  { icon: Mail,       title: 'Email Setup',             desc: 'Professional inboxes on your domain (info@, sales@, anything you need) — properly authenticated.' },
+  { icon: HeartPulse, title: 'Ongoing Support',         desc: 'A real team you can email or call when something matters — same-day responses on care plans.' },
 ]
 
 const packages = [
   {
     name: 'Launch Care',
-    price: 'from 800 BAM',
-    desc: 'For businesses launching their first professional website.',
-    features: ['Custom design (up to 5 pages)', 'Mobile responsive', 'Basic SEO setup', 'Contact form integration', 'Hosting setup included', '30 days post-launch support'],
-    accent: false,
+    price: '800 BAM',
+    priceUnit: 'one-time',
+    desc: 'Your first professional website, done right.',
+    features: [
+      'Custom design (up to 5 pages)',
+      'Mobile-first responsive layout',
+      'Basic SEO setup',
+      'Contact form integration',
+      'Hosting setup included',
+      '30 days post-launch support',
+    ],
+    cta: 'Get Launch Care',
+    highlighted: false,
   },
   {
     name: 'Growth Care',
-    price: 'from 1,500 BAM',
+    price: '1,500 BAM',
+    priceUnit: 'one-time',
     desc: 'For businesses ready to grow their online presence seriously.',
-    features: ['Full custom design (up to 12 pages)', 'Advanced responsive design', 'SEO foundation + analytics', 'CMS integration', 'Performance optimization', '3 months maintenance included', 'Monthly content updates (2/mo)', 'Priority support'],
-    accent: true,
+    features: [
+      'Full custom design (up to 12 pages)',
+      'Advanced responsive design',
+      'SEO foundation + analytics',
+      'CMS integration',
+      'Performance optimization',
+      '3 months maintenance included',
+      'Priority support',
+    ],
+    cta: 'Get Growth Care',
+    highlighted: true,
   },
   {
     name: 'Presence Care',
-    price: 'from 200 BAM/mo',
-    desc: 'Ongoing care for businesses that want their site managed properly.',
-    features: ['Monthly maintenance & updates', 'Security monitoring', 'Performance optimization', 'Content updates (up to 4/mo)', 'Hosting management', 'Monthly reports', 'Priority response', 'Quarterly design review'],
-    accent: false,
+    price: '200 BAM',
+    priceUnit: 'per month',
+    desc: 'Ongoing care for an existing site you want managed properly.',
+    features: [
+      'Hosting and SSL management',
+      'Weekly backups',
+      'Security monitoring & patches',
+      'Content updates (2 per month)',
+      'Uptime monitoring',
+      'Same-day email support',
+    ],
+    cta: 'Start Presence Care',
+    highlighted: false,
   },
 ]
 
+const differentiators = [
+  { icon: Sparkles,   title: 'Premium Design',        desc: 'Hand-built layouts that look modern, refined, and intentional — never generic.' },
+  { icon: Gauge,      title: 'Fast Performance',      desc: 'Optimized assets, lean code, and CDN delivery. Sites that load in under two seconds.' },
+  { icon: Smartphone, title: 'Mobile-First',          desc: 'Designed for the device most of your visitors actually use. Pixel-perfect everywhere.' },
+  { icon: Search,     title: 'SEO-Ready',             desc: 'Semantic markup, structured data, performance, and on-page strategy from day one.' },
+  { icon: HeartPulse, title: 'Real Ongoing Support',  desc: 'A human team — not a ticket queue. Same-day responses on every care plan.' },
+  { icon: Languages,  title: 'Bosnian & English',     desc: 'Native support in both languages. Local understanding, international quality.' },
+]
+
 const process = [
-  { step: '01', title: 'Discovery', desc: 'We learn about your business, audience, and goals. No assumptions.' },
-  { step: '02', title: 'Strategy', desc: 'We plan the structure, content direction, and technical approach.' },
-  { step: '03', title: 'Design', desc: 'We build your site with attention to every detail. You review and refine.' },
-  { step: '04', title: 'Launch', desc: 'We handle deployment, DNS, SSL, and everything technical.' },
-  { step: '05', title: 'Ongoing Care', desc: 'We maintain, update, and improve your site month after month.' },
+  { num: '01', icon: Compass,    title: 'Discovery',   desc: 'We learn your business, audience, and goals. A free consultation defines scope and outcomes.' },
+  { num: '02', icon: PenTool,    title: 'Design',      desc: 'Custom layouts and visual direction built around your brand — reviewed and refined together.' },
+  { num: '03', icon: Code2,      title: 'Development', desc: 'Clean, fast, accessible code. SEO, analytics, and integrations wired up properly.' },
+  { num: '04', icon: Rocket,     title: 'Launch',      desc: 'Deployment, DNS, SSL, and a full QA pass. You go live with a site that is ready for visitors.' },
+  { num: '05', icon: HeartPulse, title: 'Ongoing Care',desc: 'Updates, monitoring, and content changes — your site stays healthy without your attention.' },
 ]
 
-const work = [
-  { name: 'Brava Interiors', type: 'Interior Design Studio', scope: 'Full website + monthly care', color: '#8B6F47' },
-  { name: 'Peak Athletics', type: 'Fitness & Training', scope: 'Redesign + hosting setup', color: '#47788B' },
-  { name: 'Zenith Consulting', type: 'Business Consulting', scope: 'Website + Growth Care plan', color: '#6B478B' },
-  { name: 'Mira Wellness', type: 'Health & Wellness', scope: 'Launch Care package', color: '#478B6B' },
+const faqs = [
+  {
+    q: 'How much does a website cost?',
+    a: 'Launch Care starts at 800 BAM for a complete 5-page site. Growth Care is 1,500 BAM for a larger 12-page build. Presence Care is 200 BAM/month for ongoing management of an existing site. Every quote includes a clear scope — no surprises.',
+  },
+  {
+    q: 'How long does a project take?',
+    a: 'Launch Care typically delivers in 2–3 weeks. Growth Care takes 4–6 weeks depending on scope. We agree on a timeline at the start and keep you updated throughout.',
+  },
+  {
+    q: 'Is hosting included?',
+    a: 'Yes. Both Launch Care and Growth Care include hosting setup, SSL, and proper domain configuration. After the included support window, hosting can continue under a Presence Care plan.',
+  },
+  {
+    q: 'How many revisions do I get?',
+    a: 'Every package includes design revisions during the design phase — we work iteratively with you until the direction is right. Major scope changes after sign-off are handled transparently.',
+  },
+  {
+    q: 'What about ongoing maintenance after launch?',
+    a: 'Launch Care includes 30 days of post-launch support. Growth Care includes 3 months. After that, Presence Care keeps your site updated, secure, and maintained for 200 BAM/month.',
+  },
+  {
+    q: 'Who owns the website when it is done?',
+    a: 'You do. Code, content, domain, and hosting credentials are all yours. We do not hold your site hostage.',
+  },
+  {
+    q: 'Do you work with businesses outside Bosnia?',
+    a: 'Yes — we work with clients across the Balkans and internationally. All communication happens in Bosnian, English, or both, depending on your preference.',
+  },
 ]
 
-const testimonials = [
-  { name: 'Amina H.', company: 'Brava Interiors', text: 'Finally a team that handles everything. I just focus on my business now.' },
-  { name: 'Marko P.', company: 'Peak Athletics', text: 'The site looks premium and I never have to think about updates or security.' },
-  { name: 'Sara K.', company: 'Zenith Consulting', text: 'Professional, fast, and they actually understand what a business needs online.' },
-]
+// ══════════════════════════════════════════════════════════════
 
 export default function HomePage() {
+  useEffect(() => {
+    document.title = 'Cloz Digital — Premium Web Design, Hosting & Ongoing Care'
+  }, [])
+
   return (
-    <>
-      {/* Hero */}
-      <section className="pt-32 pb-20 px-6">
-        <div className="max-w-[1200px] mx-auto">
-          <div className="max-w-[720px]">
-            <h1 className="font-display font-bold text-[48px] md:text-[64px] leading-[1.05] tracking-tight text-text-primary">
-              Web design that works.<br />
-              <span className="text-text-secondary">Care that keeps working.</span>
-            </h1>
-            <p className="mt-6 text-[16px] md:text-[18px] text-text-secondary leading-relaxed max-w-[540px]">
-              We build premium websites and maintain them properly. No disappearing after launch. Your online presence, handled with serious care.
-            </p>
-            <div className="mt-8 flex flex-wrap gap-3">
-              <a href="#contact" className="inline-flex items-center gap-2 bg-accent hover:bg-accent-hover text-white font-medium px-6 py-3 rounded-md transition-colors text-[14px]">
-                Start a Project
-                <ArrowUpRight size={15} />
-              </a>
-              <a href="#packages" className="inline-flex items-center gap-2 bg-elevated hover:bg-raised text-text-primary border border-border font-medium px-6 py-3 rounded-md transition-colors text-[14px]">
-                View Packages
-              </a>
-            </div>
+    <div className="bg-bg text-text-primary">
+      <Hero />
+      <Services />
+      <Packages />
+      <WhyChoose />
+      <Process />
+      <FAQ />
+      <FinalCTA />
+    </div>
+  )
+}
+
+// ══════════════════════════════════════════════════════════════
+//  HERO
+// ══════════════════════════════════════════════════════════════
+
+function Hero() {
+  return (
+    <section className="relative pt-32 pb-24 md:pt-40 md:pb-32 px-6 overflow-hidden">
+      {/* Background gradient accent */}
+      <div className="absolute inset-0 pointer-events-none" aria-hidden="true">
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[800px] rounded-full opacity-[0.08]"
+          style={{ background: 'radial-gradient(circle, var(--color-accent) 0%, transparent 60%)' }} />
+      </div>
+
+      <div className="relative max-w-[1200px] mx-auto">
+        <div className="max-w-[820px]">
+          {/* Eyebrow */}
+          <div className="inline-flex items-center gap-2 px-3 py-1 mb-6 rounded-full bg-accent-muted border border-accent/20">
+            <span className="w-1.5 h-1.5 rounded-full bg-accent animate-pulse" />
+            <span className="text-[11px] font-medium text-accent uppercase tracking-wider">Premium Web Agency · Bosnia</span>
           </div>
 
-          {/* Trust indicators */}
-          <div className="mt-16 flex flex-wrap gap-8 items-center">
-            <div className="flex flex-col">
-              <span className="text-[28px] font-display font-bold">30+</span>
-              <span className="text-[12px] text-text-tertiary">Projects delivered</span>
-            </div>
-            <div className="w-px h-10 bg-border" />
-            <div className="flex flex-col">
-              <span className="text-[28px] font-display font-bold">12</span>
-              <span className="text-[12px] text-text-tertiary">Active care clients</span>
-            </div>
-            <div className="w-px h-10 bg-border" />
-            <div className="flex flex-col">
-              <span className="text-[28px] font-display font-bold">99.9%</span>
-              <span className="text-[12px] text-text-tertiary">Uptime maintained</span>
-            </div>
+          {/* Headline */}
+          <h1 className="font-display font-bold text-[44px] md:text-[64px] leading-[1.05] tracking-tight">
+            Premium websites,<br />
+            <span className="text-accent">built to convert.</span><br />
+            Care that keeps them working.
+          </h1>
+
+          {/* Subhead */}
+          <p className="mt-7 text-[16px] md:text-[18px] text-text-secondary leading-relaxed max-w-[640px]">
+            Cloz Digital designs, builds, and maintains modern websites for businesses
+            that take their online presence seriously. Design, hosting, SEO, and ongoing care — handled.
+          </p>
+
+          {/* CTAs */}
+          <div className="mt-10 flex flex-col sm:flex-row gap-3">
+            <Link to="/contact"
+              className="inline-flex items-center justify-center gap-2 bg-accent hover:bg-accent-hover text-white px-6 py-3.5 rounded-md text-[14px] font-semibold transition-all hover:translate-y-[-1px] hover:shadow-[0_8px_24px_rgba(94,141,181,0.25)]">
+              Book a Free Consultation
+              <ArrowUpRight size={15} />
+            </Link>
+            <a href="#packages"
+              className="inline-flex items-center justify-center gap-2 bg-elevated hover:bg-raised border border-border text-text-primary px-6 py-3.5 rounded-md text-[14px] font-medium transition-colors">
+              View Packages
+              <ArrowRight size={14} />
+            </a>
+          </div>
+
+          {/* Trust strip */}
+          <div className="mt-12 flex flex-wrap items-center gap-x-8 gap-y-3 text-[12px] text-text-tertiary">
+            <span className="flex items-center gap-1.5"><Check size={12} className="text-accent" /> Custom design — never templates</span>
+            <span className="flex items-center gap-1.5"><Check size={12} className="text-accent" /> Transparent fixed pricing</span>
+            <span className="flex items-center gap-1.5"><Check size={12} className="text-accent" /> Same-day support on care plans</span>
+            <span className="flex items-center gap-1.5"><Check size={12} className="text-accent" /> You own everything</span>
           </div>
         </div>
-      </section>
+      </div>
+    </section>
+  )
+}
 
-      {/* Services */}
-      <section id="services" className="py-20 px-6 border-t border-border">
-        <div className="max-w-[1200px] mx-auto">
-          <div className="max-w-[480px] mb-12">
-            <span className="text-[11px] font-medium uppercase tracking-widest text-accent">Services</span>
-            <h2 className="mt-3 font-display font-bold text-[32px] leading-tight">Everything your website needs. Nothing it doesn't.</h2>
-          </div>
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {services.map(s => (
-              <div key={s.title} className="p-6 bg-surface border border-border rounded-lg hover:border-border-strong transition-colors">
-                <s.icon size={20} className="text-accent mb-4" strokeWidth={1.5} />
-                <h3 className="font-display font-semibold text-[15px] mb-2">{s.title}</h3>
-                <p className="text-[13px] text-text-secondary leading-relaxed">{s.desc}</p>
+// ══════════════════════════════════════════════════════════════
+//  SERVICES
+// ══════════════════════════════════════════════════════════════
+
+function Services() {
+  return (
+    <section id="services" className="py-20 md:py-28 px-6 border-t border-border">
+      <div className="max-w-[1200px] mx-auto">
+        <SectionHeader
+          eyebrow="What we do"
+          title="Everything your website needs, under one roof."
+          subtitle="Design, development, hosting, SEO, and ongoing care — handled by a team that owns the outcome end to end."
+        />
+
+        <div className="mt-14 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-px bg-border rounded-xl overflow-hidden border border-border">
+          {services.map((s) => (
+            <div key={s.title} className="bg-bg p-7 hover:bg-surface transition-colors group">
+              <div className="w-10 h-10 rounded-lg bg-accent-muted flex items-center justify-center mb-4 group-hover:bg-accent/20 transition-colors">
+                <s.icon size={18} className="text-accent" />
               </div>
-            ))}
-          </div>
+              <h3 className="font-display font-semibold text-[16px] mb-2">{s.title}</h3>
+              <p className="text-[13px] text-text-secondary leading-relaxed">{s.desc}</p>
+            </div>
+          ))}
         </div>
-      </section>
+      </div>
+    </section>
+  )
+}
 
-      {/* Packages */}
-      <section id="packages" className="py-20 px-6 border-t border-border">
-        <div className="max-w-[1200px] mx-auto">
-          <div className="max-w-[480px] mb-12">
-            <span className="text-[11px] font-medium uppercase tracking-widest text-accent">Packages</span>
-            <h2 className="mt-3 font-display font-bold text-[32px] leading-tight">Choose the level of care your business needs.</h2>
-          </div>
-          <div className="grid md:grid-cols-3 gap-5">
-            {packages.map(pkg => (
-              <div key={pkg.name} className={`p-7 rounded-lg border ${pkg.accent ? 'bg-accent-muted border-accent/30' : 'bg-surface border-border'}`}>
-                <h3 className="font-display font-bold text-[18px]">{pkg.name}</h3>
-                <p className="mt-1 text-[13px] text-text-secondary">{pkg.desc}</p>
-                <div className="mt-4 mb-6">
-                  <span className="text-[24px] font-display font-bold">{pkg.price}</span>
-                </div>
-                <ul className="space-y-2.5">
-                  {pkg.features.map(f => (
-                    <li key={f} className="flex items-start gap-2 text-[13px] text-text-secondary">
-                      <Check size={14} className="text-success mt-0.5 shrink-0" />
-                      <span>{f}</span>
-                    </li>
-                  ))}
-                </ul>
-                <a href="#contact" className={`mt-6 w-full inline-flex items-center justify-center gap-2 font-medium px-4 py-2.5 rounded-md transition-colors text-[13px] ${
-                  pkg.accent
+// ══════════════════════════════════════════════════════════════
+//  PACKAGES
+// ══════════════════════════════════════════════════════════════
+
+function Packages() {
+  return (
+    <section id="packages" className="py-20 md:py-28 px-6 border-t border-border">
+      <div className="max-w-[1200px] mx-auto">
+        <SectionHeader
+          eyebrow="Packages"
+          title="Clear pricing. No hidden costs."
+          subtitle="Choose a package that fits where your business is today. Every plan includes design, build, deployment, and a real human you can talk to."
+        />
+
+        <div className="mt-14 grid grid-cols-1 md:grid-cols-3 gap-5">
+          {packages.map((p) => (
+            <div key={p.name}
+              className={`relative rounded-xl p-7 border transition-all ${
+                p.highlighted
+                  ? 'bg-gradient-to-b from-accent-muted to-surface border-accent/40 md:-translate-y-2 shadow-[0_20px_60px_rgba(94,141,181,0.15)]'
+                  : 'bg-surface border-border hover:border-text-tertiary'
+              }`}>
+              {p.highlighted && (
+                <span className="absolute -top-3 left-1/2 -translate-x-1/2 bg-accent text-white text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-wider">
+                  Most Popular
+                </span>
+              )}
+
+              <h3 className="font-display font-bold text-[20px] mb-1">{p.name}</h3>
+              <p className="text-[12px] text-text-tertiary mb-5">{p.desc}</p>
+
+              <div className="mb-6">
+                <span className="font-display font-bold text-[36px] tracking-tight">{p.price}</span>
+                <span className="text-[12px] text-text-tertiary ml-2">{p.priceUnit}</span>
+              </div>
+
+              <ul className="space-y-2.5 mb-7">
+                {p.features.map(f => (
+                  <li key={f} className="flex items-start gap-2 text-[13px] text-text-secondary leading-relaxed">
+                    <Check size={13} className="text-accent shrink-0 mt-1" />
+                    <span>{f}</span>
+                  </li>
+                ))}
+              </ul>
+
+              <Link to="/contact"
+                className={`block text-center py-3 rounded-md text-[13px] font-semibold transition-all ${
+                  p.highlighted
                     ? 'bg-accent hover:bg-accent-hover text-white'
                     : 'bg-elevated hover:bg-raised text-text-primary border border-border'
                 }`}>
-                  Get Started
-                  <ArrowRight size={13} />
-                </a>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Process */}
-      <section id="process" className="py-20 px-6 border-t border-border">
-        <div className="max-w-[1200px] mx-auto">
-          <div className="max-w-[480px] mb-12">
-            <span className="text-[11px] font-medium uppercase tracking-widest text-accent">Process</span>
-            <h2 className="mt-3 font-display font-bold text-[32px] leading-tight">How we work. Clear, structured, no guessing.</h2>
-          </div>
-          <div className="grid md:grid-cols-5 gap-4">
-            {process.map(p => (
-              <div key={p.step} className="p-5 bg-surface border border-border rounded-lg">
-                <span className="text-[11px] font-mono font-medium text-accent">{p.step}</span>
-                <h3 className="mt-2 font-display font-semibold text-[14px]">{p.title}</h3>
-                <p className="mt-2 text-[12px] text-text-secondary leading-relaxed">{p.desc}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Work */}
-      <section id="work" className="py-20 px-6 border-t border-border">
-        <div className="max-w-[1200px] mx-auto">
-          <div className="max-w-[480px] mb-12">
-            <span className="text-[11px] font-medium uppercase tracking-widest text-accent">Work</span>
-            <h2 className="mt-3 font-display font-bold text-[32px] leading-tight">Businesses we've helped look and perform better.</h2>
-          </div>
-          <div className="grid md:grid-cols-2 gap-4">
-            {work.map(w => (
-              <div key={w.name} className="group relative overflow-hidden rounded-lg border border-border bg-surface hover:border-border-strong transition-colors">
-                <div className="h-48 w-full" style={{ background: `linear-gradient(135deg, ${w.color}22, ${w.color}08)` }} />
-                <div className="p-6">
-                  <h3 className="font-display font-semibold text-[16px]">{w.name}</h3>
-                  <p className="text-[12px] text-text-tertiary mt-0.5">{w.type}</p>
-                  <p className="text-[13px] text-text-secondary mt-2">{w.scope}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Testimonials */}
-      <section className="py-20 px-6 border-t border-border">
-        <div className="max-w-[1200px] mx-auto">
-          <div className="max-w-[480px] mb-12">
-            <span className="text-[11px] font-medium uppercase tracking-widest text-accent">Trust</span>
-            <h2 className="mt-3 font-display font-bold text-[32px] leading-tight">What our clients say.</h2>
-          </div>
-          <div className="grid md:grid-cols-3 gap-4">
-            {testimonials.map(t => (
-              <div key={t.name} className="p-6 bg-surface border border-border rounded-lg">
-                <p className="text-[14px] text-text-secondary leading-relaxed italic">"{t.text}"</p>
-                <div className="mt-4 pt-4 border-t border-border">
-                  <span className="text-[13px] font-medium">{t.name}</span>
-                  <span className="text-[12px] text-text-tertiary ml-2">{t.company}</span>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Contact */}
-      <section id="contact" className="py-20 px-6 border-t border-border">
-        <div className="max-w-[1200px] mx-auto">
-          <div className="max-w-[600px] mx-auto text-center">
-            <span className="text-[11px] font-medium uppercase tracking-widest text-accent">Get in Touch</span>
-            <h2 className="mt-3 font-display font-bold text-[32px] leading-tight">Ready to take your website seriously?</h2>
-            <p className="mt-4 text-[14px] text-text-secondary">
-              Tell us about your business. We'll respond within 24 hours with an honest assessment of how we can help.
-            </p>
-          </div>
-          <form className="mt-10 max-w-[520px] mx-auto space-y-4" onSubmit={e => e.preventDefault()}>
-            <div className="grid grid-cols-2 gap-4">
-              <input type="text" placeholder="Your name" className="w-full bg-surface border border-border rounded-md px-4 py-3 text-[13px] placeholder:text-text-tertiary focus:border-accent focus:outline-none transition-colors" />
-              <input type="email" placeholder="Email" className="w-full bg-surface border border-border rounded-md px-4 py-3 text-[13px] placeholder:text-text-tertiary focus:border-accent focus:outline-none transition-colors" />
+                {p.cta}
+              </Link>
             </div>
-            <input type="text" placeholder="Business name" className="w-full bg-surface border border-border rounded-md px-4 py-3 text-[13px] placeholder:text-text-tertiary focus:border-accent focus:outline-none transition-colors" />
-            <input type="url" placeholder="Current website (if you have one)" className="w-full bg-surface border border-border rounded-md px-4 py-3 text-[13px] placeholder:text-text-tertiary focus:border-accent focus:outline-none transition-colors" />
-            <textarea rows="4" placeholder="What do you need help with?" className="w-full bg-surface border border-border rounded-md px-4 py-3 text-[13px] placeholder:text-text-tertiary focus:border-accent focus:outline-none transition-colors resize-none" />
-            <button type="submit" className="w-full bg-accent hover:bg-accent-hover text-white font-medium py-3 rounded-md transition-colors text-[14px]">
-              Send Inquiry
-            </button>
-          </form>
+          ))}
         </div>
-      </section>
-    </>
+
+        <p className="mt-10 text-center text-[12px] text-text-tertiary">
+          Need something different?{' '}
+          <Link to="/contact" className="text-accent hover:text-accent-hover">Get a custom quote →</Link>
+        </p>
+      </div>
+    </section>
+  )
+}
+
+// ══════════════════════════════════════════════════════════════
+//  WHY CHOOSE
+// ══════════════════════════════════════════════════════════════
+
+function WhyChoose() {
+  return (
+    <section className="py-20 md:py-28 px-6 border-t border-border">
+      <div className="max-w-[1200px] mx-auto">
+        <SectionHeader
+          eyebrow="Why Cloz Digital"
+          title="A premium agency without the bloated overhead."
+          subtitle="We focus on the work that matters: design that reflects your business, code that performs, and ongoing care that keeps everything healthy."
+        />
+
+        <div className="mt-14 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {differentiators.map(d => (
+            <div key={d.title} className="p-6 bg-surface border border-border rounded-xl hover:border-text-tertiary transition-colors">
+              <d.icon size={18} className="text-accent mb-3" strokeWidth={1.8} />
+              <h3 className="font-display font-semibold text-[15px] mb-1.5">{d.title}</h3>
+              <p className="text-[13px] text-text-secondary leading-relaxed">{d.desc}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  )
+}
+
+// ══════════════════════════════════════════════════════════════
+//  PROCESS
+// ══════════════════════════════════════════════════════════════
+
+function Process() {
+  return (
+    <section className="py-20 md:py-28 px-6 border-t border-border">
+      <div className="max-w-[1200px] mx-auto">
+        <SectionHeader
+          eyebrow="How we work"
+          title="A clear process from first call to ongoing care."
+          subtitle="Five focused stages. Defined deliverables. Honest communication every step."
+        />
+
+        <div className="mt-14 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+          {process.map((p) => (
+            <div key={p.num} className="relative p-6 bg-surface border border-border rounded-xl">
+              <span className="font-display font-bold text-[11px] text-accent tracking-wider">{p.num}</span>
+              <p.icon size={18} className="text-text-secondary mt-3 mb-3" strokeWidth={1.8} />
+              <h3 className="font-display font-semibold text-[14px] mb-1.5">{p.title}</h3>
+              <p className="text-[12px] text-text-tertiary leading-relaxed">{p.desc}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  )
+}
+
+// ══════════════════════════════════════════════════════════════
+//  FAQ
+// ══════════════════════════════════════════════════════════════
+
+function FAQ() {
+  const [open, setOpen] = useState(0)
+  return (
+    <section className="py-20 md:py-28 px-6 border-t border-border">
+      <div className="max-w-[820px] mx-auto">
+        <SectionHeader
+          eyebrow="Common questions"
+          title="Frequently asked questions."
+          subtitle="Straight answers. If you don't see your question, just send us a note."
+          centered
+        />
+
+        <div className="mt-12 space-y-2">
+          {faqs.map((f, i) => (
+            <div key={i} className="bg-surface border border-border rounded-lg overflow-hidden">
+              <button onClick={() => setOpen(open === i ? -1 : i)}
+                className="w-full text-left flex items-center justify-between gap-4 px-5 py-4 hover:bg-elevated transition-colors">
+                <span className="text-[14px] font-medium text-text-primary">{f.q}</span>
+                {open === i ? <Minus size={14} className="text-accent shrink-0" /> : <Plus size={14} className="text-text-tertiary shrink-0" />}
+              </button>
+              {open === i && (
+                <div className="px-5 pb-5 text-[13px] text-text-secondary leading-relaxed border-t border-border pt-4">
+                  {f.a}
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  )
+}
+
+// ══════════════════════════════════════════════════════════════
+//  FINAL CTA
+// ══════════════════════════════════════════════════════════════
+
+function FinalCTA() {
+  return (
+    <section className="py-24 md:py-32 px-6 border-t border-border">
+      <div className="max-w-[1200px] mx-auto">
+        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-accent-muted via-surface to-surface border border-accent/20 p-10 md:p-16 text-center">
+          <div className="absolute inset-0 pointer-events-none opacity-30" aria-hidden="true">
+            <div className="absolute -top-32 -right-32 w-[400px] h-[400px] rounded-full"
+              style={{ background: 'radial-gradient(circle, var(--color-accent) 0%, transparent 60%)' }} />
+          </div>
+
+          <div className="relative">
+            <h2 className="font-display font-bold text-[32px] md:text-[44px] leading-tight tracking-tight max-w-[680px] mx-auto">
+              Let's build something your customers actually use.
+            </h2>
+            <p className="mt-5 text-[15px] text-text-secondary max-w-[560px] mx-auto leading-relaxed">
+              Book a free 30-minute consultation. We will review your business, your current site, and propose the right path forward — no obligation.
+            </p>
+
+            <div className="mt-9 flex flex-col sm:flex-row items-center justify-center gap-3">
+              <Link to="/contact"
+                className="inline-flex items-center justify-center gap-2 bg-accent hover:bg-accent-hover text-white px-7 py-3.5 rounded-md text-[14px] font-semibold transition-all hover:translate-y-[-1px]">
+                Book a Free Consultation
+                <ArrowUpRight size={15} />
+              </Link>
+              <a href="mailto:general@cloz.digital"
+                className="inline-flex items-center justify-center gap-2 text-text-secondary hover:text-text-primary px-5 py-3.5 text-[13px] font-medium transition-colors">
+                <Mail size={13} />
+                general@cloz.digital
+              </a>
+            </div>
+
+            <div className="mt-8 flex items-center justify-center gap-x-6 gap-y-2 text-[11px] text-text-tertiary flex-wrap">
+              <span className="flex items-center gap-1.5"><MapPin size={11} />Sarajevo, Bosnia and Herzegovina</span>
+              <span className="flex items-center gap-1.5"><Languages size={11} />Bosnian · English</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  )
+}
+
+// ══════════════════════════════════════════════════════════════
+//  SHARED
+// ══════════════════════════════════════════════════════════════
+
+function SectionHeader({ eyebrow, title, subtitle, centered }) {
+  return (
+    <div className={centered ? 'text-center' : ''}>
+      {eyebrow && (
+        <div className={`inline-block text-[11px] font-semibold uppercase tracking-[0.15em] text-accent mb-4`}>
+          {eyebrow}
+        </div>
+      )}
+      <h2 className="font-display font-bold text-[32px] md:text-[44px] leading-[1.1] tracking-tight max-w-[760px]">
+        {title}
+      </h2>
+      {subtitle && (
+        <p className={`mt-5 text-[15px] md:text-[16px] text-text-secondary leading-relaxed max-w-[640px] ${centered ? 'mx-auto' : ''}`}>
+          {subtitle}
+        </p>
+      )}
+    </div>
   )
 }
