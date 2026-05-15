@@ -201,12 +201,58 @@ export const scout = {
   },
   lead: (id) => scoutGet(`/leads/${id}`),
   discover: (data) => scoutPost('/discover', data),
+  search: (data) => scoutPost('/search', data),
   analyze: (id) => scoutPost(`/leads/${id}/analyze`),
+  bulkAnalyze: (data) => scoutPost('/bulk-analyze', data),
   generateOutreach: (id, data) => scoutPost(`/leads/${id}/generate-outreach`, data),
+  websiteReview: (id) => scoutPost(`/leads/${id}/website-review`),
+  rebuildPrompt: (id, data) => scoutPost(`/leads/${id}/rebuild-prompt`, data),
+  changeStage: (id, data) => scoutPost(`/leads/${id}/change-stage`, data),
   updateStatus: (id, data) => scoutPatch(`/leads/${id}/status`, data),
   scanStart: (data) => scoutPost('/scan/start', data),
   scanStop: (data) => scoutPost('/scan/stop', data || {}),
   scanStatus: () => scoutGet('/scan/status'),
+  autoScan: (data) => scoutPost('/auto-scan', data),
+  pause: () => scoutPost('/pause'),
+  resume: () => scoutPost('/resume'),
+};
+
+// ── Mail Accounts API ──
+const MAIL_ACCT_BASE = '/api/mail/accounts';
+
+async function mailAcctGet(endpoint) {
+  const res = await fetch(`${MAIL_ACCT_BASE}${endpoint}`);
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: res.statusText }));
+    throw new Error(err.error || 'Mail accounts request failed');
+  }
+  return res.json();
+}
+
+async function mailAcctPost(endpoint, body = {}) {
+  const res = await fetch(`${MAIL_ACCT_BASE}${endpoint}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: res.statusText }));
+    throw new Error(err.error || 'Mail accounts request failed');
+  }
+  return res.json();
+}
+
+export const mailAccounts = {
+  list: () => mailAcctGet(''),
+  get: (id) => mailAcctGet(`/${id}`),
+  create: (data) => mailAcctPost('', data),
+  update: (id, data) => fetch(`${MAIL_ACCT_BASE}/${id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) }).then(r => r.json()),
+  remove: (id) => fetch(`${MAIL_ACCT_BASE}/${id}`, { method: 'DELETE' }).then(r => r.json()),
+  testImap: (id) => mailAcctPost(`/${id}/test-imap`),
+  testSmtp: (id) => mailAcctPost(`/${id}/test-smtp`),
+  sendTest: (id) => mailAcctPost(`/${id}/send-test`),
+  sync: (id) => mailAcctPost(`/${id}/sync`),
+  presets: () => mailAcctGet('/presets'),
 };
 
 // ── Audit Lab API ──

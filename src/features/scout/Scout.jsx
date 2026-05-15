@@ -3,7 +3,9 @@ import {
   Search, MapPin, Globe, AlertCircle, Star, ExternalLink, Phone, Mail,
   Sparkles, Target, TrendingUp, X, Send, Loader2, RefreshCw, CheckCircle,
   Play, Square, Pause, Filter, Zap, Eye, Copy, ArrowRight, Users,
-  Radar, Building2, BarChart3, AlertTriangle, Clock, MessageSquare
+  Radar, Building2, BarChart3, AlertTriangle, Clock, MessageSquare,
+  DollarSign, ShieldCheck, Flame, Code, FileCode, ChevronDown,
+  MapPinned, GitBranch, Award
 } from 'lucide-react'
 import { scout } from '@/lib/api'
 
@@ -11,21 +13,29 @@ import { scout } from '@/lib/api'
 // CONSTANTS
 // ═══════════════════════════════════════════════
 const SCOUT_MODES = [
-  { key: 'auto',             label: 'Auto',         icon: Zap,           desc: 'Rotate through all countries' },
-  { key: 'no_website',       label: 'No Website',   icon: AlertCircle,   desc: 'Businesses without websites' },
-  { key: 'worst_websites',   label: 'Worst Sites',  icon: AlertTriangle, desc: 'Poor quality websites' },
-  { key: 'high_opportunity', label: 'High Opp.',    icon: TrendingUp,    desc: 'Strong business, weak web' },
-  { key: 'low_reviews',      label: 'Low Reviews',  icon: Star,          desc: 'Weak online presence' },
+  { key: 'auto',               label: 'Auto',            icon: Zap },
+  { key: 'no_website',         label: 'No Website',      icon: AlertCircle },
+  { key: 'worst_websites',     label: 'Worst Sites',     icon: AlertTriangle },
+  { key: 'high_opportunity',   label: 'High Opp.',       icon: TrendingUp },
+  { key: 'low_reviews',        label: 'Low Reviews',     icon: Star },
+  { key: 'high_revenue',       label: 'High Revenue',    icon: DollarSign },
+  { key: 'new_businesses',     label: 'New Biz',         icon: Building2 },
+  { key: 'premium_only',       label: 'Premium',         icon: Award },
+]
+
+const PIPELINE_STAGES = [
+  'new', 'analyzed', 'contacted', 'responded', 'meeting_scheduled',
+  'proposal_sent', 'negotiation', 'won', 'lost', 'archived'
 ]
 
 const STATUS_COLORS = {
   new:               'bg-blue-500/10 text-blue-400',
-  reviewed:          'bg-accent-muted text-accent',
-  shortlisted:       'bg-purple-500/10 text-purple-400',
+  analyzed:          'bg-accent-muted text-accent',
   contacted:         'bg-warning/10 text-warning',
-  interested:        'bg-success/10 text-success',
+  responded:         'bg-purple-500/10 text-purple-400',
   meeting_scheduled: 'bg-emerald-500/10 text-emerald-400',
   proposal_sent:     'bg-cyan-500/10 text-cyan-400',
+  negotiation:       'bg-orange-500/10 text-orange-400',
   won:               'bg-success/10 text-success',
   lost:              'bg-error/10 text-error',
   archived:          'bg-elevated text-text-tertiary',
@@ -41,7 +51,7 @@ function scoreColor(s) {
 // MAIN COMPONENT
 // ═══════════════════════════════════════════════
 export default function Scout() {
-  const [meta, setMeta] = useState({ countries: [], categories: [], statuses: [] })
+  const [meta, setMeta] = useState({ countries: [], categories: [], statuses: [], modes: [] })
   const [leads, setLeads] = useState([])
   const [stats, setStats] = useState({})
   const [selectedLead, setSelectedLead] = useState(null)
@@ -116,20 +126,24 @@ export default function Scout() {
 
   const stopScan = async (pause) => {
     try {
-      await scout.scanStop(pause ? { pause: true } : {})
+      if (pause) {
+        await scout.pause()
+      } else {
+        await scout.scanStop()
+      }
       pollScan()
       loadLeads()
       loadStats()
     } catch (e) { setError(e.message) }
   }
 
-  // Manual discover
+  // Manual discover / search
   const manualDiscover = async () => {
     if (!category) return setError('Select a business category')
     setError('')
     setLoading(true)
     try {
-      const result = await scout.discover({ country, city: city || undefined, category, mode })
+      await scout.discover({ country, city: city || undefined, category, mode })
       loadLeads()
       loadStats()
     } catch (e) { setError(e.message) }
@@ -141,7 +155,7 @@ export default function Scout() {
     setSelectedLead({ ...lead, _analyzing: true })
     try {
       const result = await scout.analyze(lead.id)
-      const updated = { ...lead, ...result.analysis, status: lead.status === 'new' ? 'reviewed' : lead.status, _analyzing: false }
+      const updated = { ...lead, ...result.analysis, status: 'analyzed', _analyzing: false }
       setSelectedLead(updated)
       loadLeads()
       loadStats()
@@ -158,7 +172,7 @@ export default function Scout() {
     return l.business_name?.toLowerCase().includes(q) || l.category?.toLowerCase().includes(q) || l.city?.toLowerCase().includes(q)
   })
 
-  const countryData = meta.countries.find(c => c.key === country)
+  const countryData = meta.countries?.find(c => c.key === country)
   const cities = countryData?.cities || []
 
   return (
@@ -172,6 +186,9 @@ export default function Scout() {
             <div className="flex items-center gap-2.5">
               <Radar size={18} className="text-accent" />
               <h1 className="font-display font-bold text-[20px]">Client Scout</h1>
+              {stats.google_places && (
+                <span className="text-[8px] font-bold bg-success/10 text-success px-1.5 py-0.5 rounded">GOOGLE PLACES</span>
+              )}
               {scanStatus.running && (
                 <span className="text-[9px] font-bold bg-success/10 text-success px-2 py-0.5 rounded animate-pulse">SCANNING</span>
               )}
@@ -210,7 +227,7 @@ export default function Scout() {
           <div className="grid grid-cols-3 gap-2">
             <select value={country} onChange={e => { setCountry(e.target.value); setCity('') }}
               className="bg-surface border border-border rounded-md px-2.5 py-1.5 text-[12px] focus:border-accent focus:outline-none">
-              {meta.countries.map(c => <option key={c.key} value={c.key}>{c.name}</option>)}
+              {(meta.countries || []).map(c => <option key={c.key} value={c.key}>{c.name}</option>)}
             </select>
             <select value={city} onChange={e => setCity(e.target.value)}
               className="bg-surface border border-border rounded-md px-2.5 py-1.5 text-[12px] focus:border-accent focus:outline-none">
@@ -220,14 +237,14 @@ export default function Scout() {
             <select value={category} onChange={e => setCategory(e.target.value)}
               className="bg-surface border border-border rounded-md px-2.5 py-1.5 text-[12px] focus:border-accent focus:outline-none">
               <option value="">All categories</option>
-              {meta.categories.map(c => <option key={c} value={c} className="capitalize">{c}</option>)}
+              {(meta.categories || []).map(c => <option key={c} value={c} className="capitalize">{c}</option>)}
             </select>
           </div>
 
           {/* Modes */}
           <div className="flex gap-1.5 overflow-x-auto pb-0.5">
             {SCOUT_MODES.map(m => (
-              <button key={m.key} onClick={() => setMode(m.key)} title={m.desc}
+              <button key={m.key} onClick={() => setMode(m.key)}
                 className={`shrink-0 flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-[11px] font-medium transition-colors ${
                   mode === m.key ? 'bg-accent-muted text-accent' : 'bg-elevated text-text-tertiary hover:text-text-secondary'
                 }`}>
@@ -242,7 +259,7 @@ export default function Scout() {
               <Loader2 size={12} className="animate-spin shrink-0" />
               <span className="truncate">{scanStatus.progress.currentTask}</span>
               <span className="ml-auto shrink-0 font-mono">
-                {scanStatus.progress.created} leads &middot; {scanStatus.remaining} left
+                {scanStatus.progress.created || 0} leads
               </span>
             </div>
           )}
@@ -256,10 +273,11 @@ export default function Scout() {
         </div>
 
         {/* Stats */}
-        <div className="grid grid-cols-4 gap-px bg-border border-b border-border shrink-0">
+        <div className="grid grid-cols-5 gap-px bg-border border-b border-border shrink-0">
           {[
             { label: 'Total', value: stats.total || 0, icon: Users },
-            { label: 'High Priority', value: stats.highPriority || 0, icon: TrendingUp },
+            { label: 'Pipeline', value: stats.pipeline_value ? `${Math.round(stats.pipeline_value / 1000)}k` : '0', icon: GitBranch },
+            { label: 'High Trust', value: stats.highTrust || 0, icon: ShieldCheck },
             { label: 'No Website', value: stats.noWebsite || 0, icon: AlertCircle },
             { label: 'Avg Score', value: stats.avgScore || 0, icon: BarChart3 },
           ].map(s => (
@@ -284,6 +302,9 @@ export default function Scout() {
             className="bg-surface border border-border rounded-md px-2 py-1.5 text-[11px] focus:border-accent focus:outline-none">
             <option value="score">By Score</option>
             <option value="newest">Newest</option>
+            <option value="trust">Trust Score</option>
+            <option value="urgency">Urgency</option>
+            <option value="revenue">Revenue</option>
             <option value="rating">By Rating</option>
             <option value="name">By Name</option>
           </select>
@@ -299,7 +320,7 @@ export default function Scout() {
         {/* Filter chips */}
         {showFilters && (
           <div className="px-3 py-2 border-b border-border flex flex-wrap gap-1 shrink-0">
-            {['', 'new', 'reviewed', 'shortlisted', 'contacted', 'interested', 'meeting_scheduled', 'proposal_sent', 'won', 'lost', 'archived'].map(s => (
+            {['', ...PIPELINE_STAGES].map(s => (
               <button key={s} onClick={() => setFilterStatus(s)}
                 className={`text-[10px] font-medium px-2 py-0.5 rounded capitalize transition-colors ${
                   filterStatus === s ? 'bg-accent-muted text-accent' : 'bg-elevated text-text-tertiary hover:text-text-secondary'
@@ -331,11 +352,17 @@ export default function Scout() {
               <div className="flex items-start justify-between mb-1">
                 <div className="flex items-center gap-2 min-w-0">
                   <span className="text-[13px] font-medium truncate">{lead.business_name}</span>
+                  {lead.place_id && <MapPinned size={10} className="text-success shrink-0" title="Google Places verified" />}
                   {!lead.has_website && <span className="text-[8px] font-bold px-1.5 py-0.5 bg-error/10 text-error rounded shrink-0">NO SITE</span>}
                 </div>
-                {lead.opportunity_score > 0 && (
-                  <span className={`text-[13px] font-mono font-bold shrink-0 ${scoreColor(lead.opportunity_score)}`}>{lead.opportunity_score}</span>
-                )}
+                <div className="flex items-center gap-1.5 shrink-0">
+                  {lead.trust_score > 0 && (
+                    <span className={`text-[11px] font-mono font-bold ${scoreColor(lead.trust_score)}`} title="Trust">{lead.trust_score}</span>
+                  )}
+                  {lead.opportunity_score > 0 && (
+                    <span className={`text-[13px] font-mono font-bold ${scoreColor(lead.opportunity_score)}`}>{lead.opportunity_score}</span>
+                  )}
+                </div>
               </div>
               <div className="flex items-center gap-1.5 text-[10px] text-text-tertiary flex-wrap">
                 <span className="flex items-center gap-0.5"><MapPin size={9} />{lead.city}</span>
@@ -350,10 +377,8 @@ export default function Scout() {
                   {lead.status?.replace('_', ' ')}
                 </span>
                 {lead.suggested_package && <span className="text-[9px] text-accent bg-accent-muted px-1.5 py-0.5 rounded">{lead.suggested_package}</span>}
-                {lead.outreach_priority && lead.outreach_priority !== '' && (
-                  <span className={`text-[9px] font-medium px-1.5 py-0.5 rounded ${
-                    lead.outreach_priority === 'critical' ? 'bg-error/10 text-error' : lead.outreach_priority === 'high' ? 'bg-warning/10 text-warning' : 'bg-elevated text-text-tertiary'
-                  }`}>{lead.outreach_priority}</span>
+                {lead.urgency_score > 70 && (
+                  <span className="text-[9px] font-medium px-1.5 py-0.5 rounded bg-error/10 text-error flex items-center gap-0.5"><Flame size={8} />Urgent</span>
                 )}
               </div>
             </button>
@@ -366,7 +391,6 @@ export default function Scout() {
         <div className="flex-1 overflow-y-auto bg-bg">
           <LeadDetail
             lead={selectedLead}
-            statuses={meta.statuses || []}
             onClose={() => setSelectedLead(null)}
             onAnalyze={() => analyzeLead(selectedLead)}
             onUpdate={(updated) => { setSelectedLead(updated); loadLeads(); loadStats() }}
@@ -380,27 +404,35 @@ export default function Scout() {
 // ═══════════════════════════════════════════════
 // LEAD DETAIL PANEL
 // ═══════════════════════════════════════════════
-function LeadDetail({ lead, statuses, onClose, onAnalyze, onUpdate }) {
+function LeadDetail({ lead, onClose, onAnalyze, onUpdate }) {
   const [tab, setTab] = useState('overview')
-  const [outreach, setOutreach] = useState(lead.outreach_email || null)
+  const [outreach, setOutreach] = useState(null)
   const [outreachLoading, setOutreachLoading] = useState(false)
   const [channel, setChannel] = useState('email')
   const [style, setStyle] = useState('professional')
   const [copied, setCopied] = useState('')
+  const [websiteReview, setWebsiteReview] = useState(null)
+  const [reviewLoading, setReviewLoading] = useState(false)
+  const [rebuildPrompt, setRebuildPrompt] = useState(null)
+  const [promptVariant, setPromptVariant] = useState('detailed')
+  const [promptLoading, setPromptLoading] = useState(false)
 
   const tabs = [
     { key: 'overview', label: 'Overview', icon: Eye },
     { key: 'analysis', label: 'Analysis', icon: Sparkles },
     { key: 'outreach', label: 'Outreach', icon: Send },
+    { key: 'website', label: 'Website Intel', icon: Code },
   ]
 
   useEffect(() => {
-    setOutreach(lead.outreach_email || null)
+    setOutreach(null)
+    setWebsiteReview(null)
+    setRebuildPrompt(null)
   }, [lead.id])
 
-  const updateStatus = async (newStatus) => {
+  const changeStage = async (newStatus) => {
     try {
-      await scout.updateStatus(lead.id, { status: newStatus })
+      await scout.changeStage(lead.id, { stage: newStatus })
       onUpdate({ ...lead, status: newStatus })
     } catch {}
   }
@@ -409,9 +441,28 @@ function LeadDetail({ lead, statuses, onClose, onAnalyze, onUpdate }) {
     setOutreachLoading(true)
     try {
       const result = await scout.generateOutreach(lead.id, { channel, style })
-      setOutreach(result.outreach)
+      setOutreach(result.outreach || result)
     } catch {}
     setOutreachLoading(false)
+  }
+
+  const runWebsiteReview = async () => {
+    if (!lead.website_url) return
+    setReviewLoading(true)
+    try {
+      const result = await scout.websiteReview(lead.id)
+      setWebsiteReview(result.review || result)
+    } catch {}
+    setReviewLoading(false)
+  }
+
+  const generateRebuildPrompt = async () => {
+    setPromptLoading(true)
+    try {
+      const result = await scout.rebuildPrompt(lead.id, { variant: promptVariant })
+      setRebuildPrompt(result.prompt || result)
+    } catch {}
+    setPromptLoading(false)
   }
 
   const copyText = (text, label) => {
@@ -420,11 +471,11 @@ function LeadDetail({ lead, statuses, onClose, onAnalyze, onUpdate }) {
     setTimeout(() => setCopied(''), 2000)
   }
 
-  const issues = Array.isArray(lead.website_issues) ? lead.website_issues : []
-  const painPoints = Array.isArray(lead.pain_points) ? lead.pain_points : []
-  const channels = Array.isArray(lead.contact_channels) ? lead.contact_channels : []
-
-  const allStatuses = statuses.length ? statuses : ['new','reviewed','shortlisted','contacted','interested','meeting_scheduled','proposal_sent','won','lost','archived']
+  const issues = (() => { try { return JSON.parse(lead.website_issues || '[]') } catch { return [] } })()
+  const painPoints = (() => { try { return JSON.parse(lead.pain_points || '[]') } catch { return [] } })()
+  const channels = (() => { try { return JSON.parse(lead.contact_channels || '[]') } catch { return [] } })()
+  const riskFactors = (() => { try { return JSON.parse(lead.risk_factors || '[]') } catch { return [] } })()
+  const revPotential = (() => { try { return JSON.parse(lead.revenue_potential || '{}') } catch { return {} } })()
 
   return (
     <div className="p-6 space-y-5">
@@ -433,6 +484,7 @@ function LeadDetail({ lead, statuses, onClose, onAnalyze, onUpdate }) {
         <div>
           <div className="flex items-center gap-3">
             <h2 className="font-display font-bold text-[20px]">{lead.business_name}</h2>
+            {lead.place_id && <MapPinned size={14} className="text-success" title="Google Places verified" />}
             {lead.opportunity_score > 0 && (
               <span className={`text-[16px] font-mono font-bold ${scoreColor(lead.opportunity_score)}`}>{lead.opportunity_score}</span>
             )}
@@ -446,11 +498,11 @@ function LeadDetail({ lead, statuses, onClose, onAnalyze, onUpdate }) {
         <button onClick={onClose} className="p-1.5 hover:bg-elevated rounded-md"><X size={16} className="text-text-tertiary" /></button>
       </div>
 
-      {/* Status */}
-      <div className="flex items-center gap-1.5 flex-wrap">
-        <span className="text-[10px] text-text-tertiary mr-1">Status:</span>
-        {allStatuses.map(s => (
-          <button key={s} onClick={() => updateStatus(s)}
+      {/* Pipeline stages */}
+      <div className="flex items-center gap-1 flex-wrap">
+        <span className="text-[10px] text-text-tertiary mr-1">Pipeline:</span>
+        {PIPELINE_STAGES.map(s => (
+          <button key={s} onClick={() => changeStage(s)}
             className={`text-[9px] font-medium px-1.5 py-0.5 rounded capitalize transition-colors ${
               lead.status === s ? 'bg-accent text-white' : 'bg-elevated text-text-tertiary hover:text-text-secondary'
             }`}>{s.replace('_', ' ')}</button>
@@ -458,11 +510,12 @@ function LeadDetail({ lead, statuses, onClose, onAnalyze, onUpdate }) {
       </div>
 
       {/* Quick cards */}
-      <div className="grid grid-cols-4 gap-2">
-        <InfoCard label="Website" value={lead.has_website ? (lead.website_url || 'Yes') : 'None'} color={lead.has_website ? 'accent' : 'error'} />
-        <InfoCard label="Package" value={lead.suggested_package || '---'} color="accent" />
-        <InfoCard label="Priority" value={lead.outreach_priority || '---'} color={lead.outreach_priority === 'critical' ? 'error' : lead.outreach_priority === 'high' ? 'warning' : 'default'} />
-        <InfoCard label="Mode" value={lead.scouting_mode || 'manual'} />
+      <div className="grid grid-cols-5 gap-2">
+        <InfoCard label="Trust" value={lead.trust_score || '—'} color={lead.trust_score >= 70 ? 'success' : lead.trust_score >= 40 ? 'warning' : 'default'} />
+        <InfoCard label="Urgency" value={lead.urgency_score || '—'} color={lead.urgency_score >= 70 ? 'error' : 'default'} />
+        <InfoCard label="Website" value={lead.has_website ? 'Yes' : 'None'} color={lead.has_website ? 'accent' : 'error'} />
+        <InfoCard label="Package" value={lead.suggested_package || '—'} color="accent" />
+        <InfoCard label="Revenue" value={revPotential.project_value ? `${revPotential.project_value}€` : '—'} color="success" />
       </div>
 
       {/* Contact row */}
@@ -483,7 +536,7 @@ function LeadDetail({ lead, statuses, onClose, onAnalyze, onUpdate }) {
       {(lead.status === 'new' || !lead.opportunity_score) && (
         <button onClick={onAnalyze} disabled={lead._analyzing}
           className="w-full flex items-center justify-center gap-2 bg-accent hover:bg-accent-hover disabled:opacity-60 text-white py-3 rounded-lg text-[13px] font-semibold transition-colors">
-          {lead._analyzing ? <><Loader2 size={14} className="animate-spin" />Analyzing...</> : <><Sparkles size={14} />Analyze This Lead</>}
+          {lead._analyzing ? <><Loader2 size={14} className="animate-spin" />Analyzing...</> : <><Sparkles size={14} />Deep Analyze</>}
         </button>
       )}
 
@@ -499,18 +552,35 @@ function LeadDetail({ lead, statuses, onClose, onAnalyze, onUpdate }) {
         ))}
       </div>
 
+      {/* Tab content */}
       {tab === 'overview' && (
         <div className="space-y-4">
-          {lead.reasoning && (
+          {lead.best_sales_angle && (
             <div className="bg-accent/5 border border-accent/20 rounded-lg p-4">
-              <div className="flex items-center gap-2 mb-2"><Target size={13} className="text-accent" /><span className="text-[12px] font-semibold text-accent">Why This Lead</span></div>
+              <div className="flex items-center gap-2 mb-2"><Target size={13} className="text-accent" /><span className="text-[12px] font-semibold text-accent">Best Sales Angle</span></div>
+              <p className="text-[13px] text-text-secondary leading-relaxed">{lead.best_sales_angle}</p>
+            </div>
+          )}
+          {lead.objection_prediction && (
+            <div className="bg-warning/5 border border-warning/20 rounded-lg p-4">
+              <div className="flex items-center gap-2 mb-2"><AlertTriangle size={13} className="text-warning" /><span className="text-[12px] font-semibold text-warning">Predicted Objection</span></div>
+              <p className="text-[13px] text-text-secondary leading-relaxed">{lead.objection_prediction}</p>
+            </div>
+          )}
+          {lead.reasoning && (
+            <div className="bg-surface border border-border rounded-lg p-4">
+              <div className="flex items-center gap-2 mb-2"><Sparkles size={13} className="text-accent" /><span className="text-[12px] font-semibold">AI Reasoning</span></div>
               <p className="text-[13px] text-text-secondary leading-relaxed">{lead.reasoning}</p>
             </div>
           )}
-          {lead.what_to_sell && (
-            <div className="bg-surface border border-border rounded-lg p-4">
-              <div className="flex items-center gap-2 mb-2"><Building2 size={13} className="text-accent" /><span className="text-[12px] font-semibold">What to Sell</span></div>
-              <p className="text-[13px] text-text-secondary leading-relaxed">{lead.what_to_sell}</p>
+          {revPotential.project_value && (
+            <div className="bg-success/5 border border-success/20 rounded-lg p-4">
+              <div className="flex items-center gap-2 mb-2"><DollarSign size={13} className="text-success" /><span className="text-[12px] font-semibold text-success">Revenue Potential</span></div>
+              <div className="grid grid-cols-3 gap-3 mt-2">
+                <div><span className="text-[10px] text-text-tertiary block">Project</span><span className="text-[14px] font-bold">{revPotential.project_value}€</span></div>
+                <div><span className="text-[10px] text-text-tertiary block">Monthly</span><span className="text-[14px] font-bold">{revPotential.monthly_value || 0}€</span></div>
+                <div><span className="text-[10px] text-text-tertiary block">Close %</span><span className="text-[14px] font-bold">{revPotential.close_probability || 0}%</span></div>
+              </div>
             </div>
           )}
           {lead.opportunity_score > 0 && (
@@ -518,6 +588,8 @@ function LeadDetail({ lead, statuses, onClose, onAnalyze, onUpdate }) {
               <h3 className="text-[12px] font-semibold mb-3">Score Breakdown</h3>
               <div className="space-y-2">
                 <ScoreBar label="Opportunity" value={lead.opportunity_score} max={100} />
+                <ScoreBar label="Trust" value={lead.trust_score || 0} max={100} />
+                <ScoreBar label="Urgency" value={lead.urgency_score || 0} max={100} />
                 <ScoreBar label="Website" value={lead.website_score || 0} max={10} />
                 <ScoreBar label="SEO" value={lead.seo_score || 0} max={10} />
                 <ScoreBar label="Mobile" value={lead.mobile_score || 0} max={10} />
@@ -525,16 +597,16 @@ function LeadDetail({ lead, statuses, onClose, onAnalyze, onUpdate }) {
               </div>
             </div>
           )}
-          {channels.length > 0 && (
+          {riskFactors.length > 0 && (
             <div className="bg-surface border border-border rounded-lg p-4">
-              <h3 className="text-[12px] font-semibold mb-2">Suggested Contact Channels</h3>
-              <div className="flex gap-1.5 flex-wrap">{channels.map((c, i) => <span key={i} className="text-[11px] bg-accent-muted text-accent px-2 py-0.5 rounded capitalize">{c}</span>)}</div>
+              <h3 className="text-[12px] font-semibold mb-2 flex items-center gap-2"><AlertTriangle size={12} className="text-error" />Risk Factors</h3>
+              <div className="space-y-1">{riskFactors.map((r, i) => <div key={i} className="flex items-start gap-2 text-[12px] text-text-secondary"><span className="text-error shrink-0">&bull;</span>{r}</div>)}</div>
             </div>
           )}
           {!lead.reasoning && !lead.opportunity_score && (
             <div className="bg-surface border border-border rounded-lg p-8 text-center">
               <Sparkles size={24} className="text-text-tertiary mx-auto mb-2 opacity-30" />
-              <p className="text-[12px] text-text-tertiary">Click "Analyze This Lead" to get AI insights</p>
+              <p className="text-[12px] text-text-tertiary">Click "Deep Analyze" to get AI intelligence</p>
             </div>
           )}
         </div>
@@ -561,11 +633,22 @@ function LeadDetail({ lead, statuses, onClose, onAnalyze, onUpdate }) {
                   <div className="space-y-1.5">{painPoints.map((p, i) => <div key={i} className="flex items-start gap-2 text-[12px] text-text-secondary"><span className="text-accent shrink-0">&rarr;</span><span>{p}</span></div>)}</div>
                 </div>
               )}
+              {lead.what_to_sell && (
+                <div className="bg-surface border border-border rounded-lg p-4">
+                  <h3 className="text-[12px] font-semibold mb-2 flex items-center gap-2"><Building2 size={13} className="text-accent" />What to Sell</h3>
+                  <p className="text-[13px] text-text-secondary leading-relaxed">{lead.what_to_sell}</p>
+                </div>
+              )}
               {lead.suggested_package && (
                 <div className="bg-accent/5 border border-accent/20 rounded-lg p-4">
                   <h3 className="text-[12px] font-semibold mb-1 text-accent">Recommended Package</h3>
                   <p className="text-[14px] font-bold">{lead.suggested_package}</p>
-                  {lead.what_to_sell && <p className="text-[12px] text-text-secondary mt-1">{lead.what_to_sell}</p>}
+                </div>
+              )}
+              {channels.length > 0 && (
+                <div className="bg-surface border border-border rounded-lg p-4">
+                  <h3 className="text-[12px] font-semibold mb-2">Contact Channels</h3>
+                  <div className="flex gap-1.5 flex-wrap">{channels.map((c, i) => <span key={i} className="text-[11px] bg-accent-muted text-accent px-2 py-0.5 rounded capitalize">{c}</span>)}</div>
                 </div>
               )}
             </>
@@ -580,12 +663,15 @@ function LeadDetail({ lead, statuses, onClose, onAnalyze, onUpdate }) {
               className="bg-surface border border-border rounded-md px-2.5 py-1.5 text-[12px] focus:border-accent focus:outline-none">
               <option value="email">Email</option>
               <option value="viber">Viber</option>
+              <option value="whatsapp">WhatsApp</option>
+              <option value="linkedin">LinkedIn</option>
             </select>
             <select value={style} onChange={e => setStyle(e.target.value)}
               className="bg-surface border border-border rounded-md px-2.5 py-1.5 text-[12px] focus:border-accent focus:outline-none">
               <option value="professional">Professional</option>
               <option value="casual">Casual</option>
               <option value="direct">Direct</option>
+              <option value="consultative">Consultative</option>
             </select>
             <button onClick={generateOutreach} disabled={outreachLoading}
               className="flex items-center gap-1.5 bg-accent hover:bg-accent-hover disabled:opacity-50 text-white px-3 py-1.5 rounded-md text-[12px] font-medium ml-auto">
@@ -605,38 +691,133 @@ function LeadDetail({ lead, statuses, onClose, onAnalyze, onUpdate }) {
                   <p className="text-[13px] font-medium">{outreach.subject}</p>
                 </div>
               )}
-              <div className="bg-surface border border-border rounded-lg p-4">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-[10px] text-text-tertiary uppercase tracking-wider flex items-center gap-1"><MessageSquare size={10} />Email</span>
-                  <CopyBtn text={outreach.message} label="message" copied={copied} onCopy={copyText} />
-                </div>
-                <div className="text-[13px] text-text-secondary leading-relaxed whitespace-pre-line">{outreach.message}</div>
-              </div>
-              {outreach.viber_message && (
+              {outreach.message && (
                 <div className="bg-surface border border-border rounded-lg p-4">
                   <div className="flex items-center justify-between mb-2">
-                    <span className="text-[10px] text-text-tertiary uppercase tracking-wider flex items-center gap-1"><MessageSquare size={10} />Viber</span>
-                    <CopyBtn text={outreach.viber_message} label="viber" copied={copied} onCopy={copyText} />
+                    <span className="text-[10px] text-text-tertiary uppercase tracking-wider flex items-center gap-1"><MessageSquare size={10} />{channel}</span>
+                    <CopyBtn text={outreach.message} label="message" copied={copied} onCopy={copyText} />
                   </div>
-                  <div className="text-[13px] text-text-secondary leading-relaxed whitespace-pre-line">{outreach.viber_message}</div>
+                  <div className="text-[13px] text-text-secondary leading-relaxed whitespace-pre-line">{outreach.message}</div>
                 </div>
               )}
-              {outreach.followUp && (
+              {outreach.followup_1 && (
                 <div className="bg-elevated border border-border rounded-lg p-4">
                   <div className="flex items-center justify-between mb-2">
-                    <span className="text-[10px] text-text-tertiary uppercase tracking-wider flex items-center gap-1"><Clock size={10} />Follow-Up (5 days)</span>
-                    <CopyBtn text={outreach.followUp} label="followup" copied={copied} onCopy={copyText} />
+                    <span className="text-[10px] text-text-tertiary uppercase tracking-wider flex items-center gap-1"><Clock size={10} />Follow-Up #1</span>
+                    <CopyBtn text={outreach.followup_1} label="fu1" copied={copied} onCopy={copyText} />
                   </div>
-                  <div className="text-[12px] text-text-secondary leading-relaxed whitespace-pre-line">{outreach.followUp}</div>
+                  <div className="text-[12px] text-text-secondary leading-relaxed whitespace-pre-line">{outreach.followup_1}</div>
+                </div>
+              )}
+              {outreach.followup_2 && (
+                <div className="bg-elevated border border-border rounded-lg p-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-[10px] text-text-tertiary uppercase tracking-wider flex items-center gap-1"><Clock size={10} />Follow-Up #2</span>
+                    <CopyBtn text={outreach.followup_2} label="fu2" copied={copied} onCopy={copyText} />
+                  </div>
+                  <div className="text-[12px] text-text-secondary leading-relaxed whitespace-pre-line">{outreach.followup_2}</div>
                 </div>
               )}
             </div>
           ) : !outreachLoading ? (
             <div className="bg-surface border border-border rounded-lg p-8 text-center">
               <Send size={24} className="text-text-tertiary mx-auto mb-2 opacity-30" />
-              <p className="text-[12px] text-text-tertiary">Generate a personalized outreach message</p>
+              <p className="text-[12px] text-text-tertiary">Generate multi-channel outreach with AI</p>
             </div>
           ) : null}
+        </div>
+      )}
+
+      {tab === 'website' && (
+        <div className="space-y-4">
+          {!lead.website_url ? (
+            <div className="bg-surface border border-border rounded-lg p-8 text-center">
+              <Globe size={24} className="text-text-tertiary mx-auto mb-2 opacity-30" />
+              <p className="text-[12px] text-text-tertiary">This lead has no website to review</p>
+            </div>
+          ) : (
+            <>
+              {/* Website Review */}
+              <div className="flex items-center justify-between">
+                <h3 className="text-[13px] font-semibold flex items-center gap-2"><Eye size={13} className="text-accent" />Website Review</h3>
+                <button onClick={runWebsiteReview} disabled={reviewLoading}
+                  className="flex items-center gap-1.5 bg-elevated hover:bg-raised border border-border px-2.5 py-1.5 rounded-md text-[11px] font-medium">
+                  {reviewLoading ? <Loader2 size={11} className="animate-spin" /> : <Sparkles size={11} />}
+                  {reviewLoading ? 'Reviewing...' : websiteReview ? 'Re-review' : 'Run Review'}
+                </button>
+              </div>
+
+              {websiteReview && (
+                <div className="space-y-3">
+                  {websiteReview.overall_score != null && (
+                    <div className="bg-surface border border-border rounded-lg p-4">
+                      <div className="flex items-center justify-between mb-3">
+                        <span className="text-[12px] font-semibold">Overall Score</span>
+                        <span className={`text-[18px] font-mono font-bold ${scoreColor(websiteReview.overall_score)}`}>{websiteReview.overall_score}/100</span>
+                      </div>
+                      {websiteReview.scores && (
+                        <div className="space-y-1.5">
+                          {Object.entries(websiteReview.scores).map(([key, val]) => (
+                            <ScoreBar key={key} label={key.replace(/_/g, ' ')} value={val} max={10} />
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                  {websiteReview.issues && websiteReview.issues.length > 0 && (
+                    <div className="bg-surface border border-border rounded-lg p-4">
+                      <h4 className="text-[12px] font-semibold mb-2">Issues Found</h4>
+                      <div className="space-y-1">{websiteReview.issues.map((issue, i) => (
+                        <div key={i} className="flex items-start gap-2 text-[12px] text-text-secondary"><span className="text-error shrink-0">&bull;</span>{issue}</div>
+                      ))}</div>
+                    </div>
+                  )}
+                  {websiteReview.summary && (
+                    <div className="bg-surface border border-border rounded-lg p-4">
+                      <h4 className="text-[12px] font-semibold mb-2">Summary</h4>
+                      <p className="text-[12px] text-text-secondary leading-relaxed">{websiteReview.summary}</p>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Rebuild Prompt Generator */}
+              <div className="border-t border-border pt-4">
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="text-[13px] font-semibold flex items-center gap-2"><FileCode size={13} className="text-accent" />Rebuild Prompt</h3>
+                  <div className="flex items-center gap-2">
+                    <select value={promptVariant} onChange={e => setPromptVariant(e.target.value)}
+                      className="bg-surface border border-border rounded-md px-2 py-1 text-[11px] focus:border-accent focus:outline-none">
+                      <option value="short">Short</option>
+                      <option value="detailed">Detailed</option>
+                      <option value="full">Full Spec</option>
+                      <option value="homepage">Homepage</option>
+                      <option value="copy_rewrite">Copy Rewrite</option>
+                      <option value="conversion">Conversion</option>
+                      <option value="premium">Premium</option>
+                    </select>
+                    <button onClick={generateRebuildPrompt} disabled={promptLoading}
+                      className="flex items-center gap-1.5 bg-accent hover:bg-accent-hover disabled:opacity-50 text-white px-2.5 py-1.5 rounded-md text-[11px] font-medium">
+                      {promptLoading ? <Loader2 size={11} className="animate-spin" /> : <Code size={11} />}
+                      Generate
+                    </button>
+                  </div>
+                </div>
+
+                {rebuildPrompt && (
+                  <div className="bg-elevated border border-border rounded-lg">
+                    <div className="flex items-center justify-between px-4 py-2 border-b border-border">
+                      <span className="text-[11px] font-medium text-accent capitalize">{promptVariant} prompt</span>
+                      <CopyBtn text={rebuildPrompt.prompt || rebuildPrompt} label="prompt" copied={copied} onCopy={copyText} />
+                    </div>
+                    <pre className="p-4 text-[11px] text-text-secondary leading-relaxed whitespace-pre-wrap max-h-[400px] overflow-y-auto font-mono">
+                      {rebuildPrompt.prompt || rebuildPrompt}
+                    </pre>
+                  </div>
+                )}
+              </div>
+            </>
+          )}
         </div>
       )}
     </div>
@@ -647,7 +828,7 @@ function LeadDetail({ lead, statuses, onClose, onAnalyze, onUpdate }) {
 // SMALL COMPONENTS
 // ═══════════════════════════════════════════════
 function InfoCard({ label, value, color }) {
-  const c = color === 'error' ? 'text-error' : color === 'warning' ? 'text-warning' : color === 'accent' ? 'text-accent' : 'text-text-primary'
+  const c = color === 'error' ? 'text-error' : color === 'warning' ? 'text-warning' : color === 'accent' ? 'text-accent' : color === 'success' ? 'text-success' : 'text-text-primary'
   return (
     <div className="bg-surface border border-border rounded-md p-2.5">
       <span className="text-[9px] text-text-tertiary uppercase tracking-wider block">{label}</span>
@@ -660,12 +841,12 @@ function ScoreBar({ label, value, max }) {
   const pct = max > 0 ? (value / max) * 100 : 0
   return (
     <div className="flex items-center gap-3">
-      <span className="text-[11px] text-text-tertiary w-20 shrink-0">{label}</span>
+      <span className="text-[11px] text-text-tertiary w-24 shrink-0 capitalize">{label}</span>
       <div className="flex-1 h-1.5 bg-elevated rounded-full overflow-hidden">
         <div className={`h-full rounded-full transition-all ${pct >= 70 ? 'bg-success' : pct >= 40 ? 'bg-warning' : 'bg-error'}`}
           style={{ width: `${Math.min(pct, 100)}%` }} />
       </div>
-      <span className={`text-[11px] font-mono font-bold w-8 text-right ${scoreColor(pct)}`}>{value}/{max}</span>
+      <span className={`text-[11px] font-mono font-bold w-10 text-right ${scoreColor(pct)}`}>{value}/{max}</span>
     </div>
   )
 }

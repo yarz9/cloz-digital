@@ -2,6 +2,7 @@ import dotenv from 'dotenv';
 import express from 'express';
 import helmet from 'helmet';
 import cors from 'cors';
+import cookieParser from 'cookie-parser';
 import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
@@ -38,6 +39,10 @@ import aiRoutes from './routes/ai.js';
 import auditRoutes from './routes/audit.js';
 import scoutRoutes from './routes/scout.js';
 import mailRoutes from './routes/mail.js';
+import managementAuthRoutes from './routes/managementAuth.js';
+import mailAccountRoutes from './routes/mailAccounts.js';
+import { seedMailAccounts } from './routes/mailAccounts.js';
+import { startSyncWorker, startSendQueueProcessor } from './services/mailService.js';
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -46,6 +51,7 @@ const pkg = JSON.parse(fs.readFileSync(path.join(__dirname, 'package.json'), 'ut
 app.use(helmet({ contentSecurityPolicy: false }));
 app.use(cors());
 app.use(express.json({ limit: '1mb' }));
+app.use(cookieParser());
 
 // ── Standalone health check (Railway uses this) ──
 app.get('/health', (_req, res) => {
@@ -76,9 +82,11 @@ if (fs.existsSync(distPath)) {
 
 // ── Public API (no auth) ──
 app.use('/api/auth', authRoutes);
+app.use('/api/management/auth', managementAuthRoutes);
 app.use('/api/ai', apiLimiter, aiRoutes);
 app.use('/api/audit', apiLimiter, auditRoutes);
 app.use('/api/client-scout', apiLimiter, scoutRoutes);
+app.use('/api/mail/accounts', apiLimiter, mailAccountRoutes);
 app.use('/api/mail', apiLimiter, mailRoutes);
 app.use('/api/health', healthRoutes);
 
@@ -131,6 +139,11 @@ process.on('unhandledRejection', (reason) => {
   try {
     const db = await initDatabase();
     seedDefaults(db);
+    seedMailAccounts(db);
+
+    // Start mail background workers
+    startSyncWorker();
+    startSendQueueProcessor();
 
     const provider = getActiveProvider();
     const defaultModel = resolveModel('generate');

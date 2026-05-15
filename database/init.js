@@ -300,12 +300,63 @@ export async function initDatabase() {
     );
   `);
 
+  // ── Migrate mail_accounts table (add new columns) ──
+  const mailAccountMigrations = [
+    ['account_name', "TEXT DEFAULT ''"],
+    ['description', "TEXT DEFAULT ''"],
+    ['imap_username', "TEXT DEFAULT ''"],
+    ['imap_password_encrypted', "TEXT DEFAULT ''"],
+    ['imap_encryption', "TEXT DEFAULT 'ssl_tls'"],
+    ['smtp_username', "TEXT DEFAULT ''"],
+    ['smtp_password_encrypted', "TEXT DEFAULT ''"],
+    ['smtp_encryption', "TEXT DEFAULT 'ssl_tls'"],
+    ['sync_enabled', 'INTEGER DEFAULT 0'],
+    ['sync_interval_minutes', 'INTEGER DEFAULT 15'],
+    ['sync_sent', 'INTEGER DEFAULT 0'],
+    ['download_attachments', 'INTEGER DEFAULT 0'],
+    ['is_default', 'INTEGER DEFAULT 0'],
+    ['inbox_folder', "TEXT DEFAULT 'INBOX'"],
+    ['sent_folder', "TEXT DEFAULT 'Sent'"],
+    ['drafts_folder', "TEXT DEFAULT 'Drafts'"],
+    ['trash_folder', "TEXT DEFAULT 'Trash'"],
+    ['spam_folder', "TEXT DEFAULT 'Spam'"],
+    ['last_imap_test_at', "TEXT DEFAULT ''"],
+    ['last_smtp_test_at', "TEXT DEFAULT ''"],
+    ['last_sync_at', "TEXT DEFAULT ''"],
+    ['updated_at', "TEXT DEFAULT (datetime('now'))"],
+  ];
+  for (const [col, typedef] of mailAccountMigrations) {
+    try {
+      rawDb.run(`ALTER TABLE mail_accounts ADD COLUMN ${col} ${typedef}`);
+    } catch {
+      // Column already exists — ignore
+    }
+  }
+
   // ── Migrate existing client_scout_leads table (add columns that may be missing) ──
   const migrations = [
     ['conversion_score', 'INTEGER DEFAULT 0'],
     ['contact_channels', "TEXT DEFAULT '[]'"],
     ['outreach_viber', "TEXT DEFAULT ''"],
     ['source_hash', "TEXT DEFAULT ''"],
+    // Phase 3: Google Places + enhanced scoring
+    ['place_id', "TEXT DEFAULT ''"],
+    ['lat', 'REAL DEFAULT 0'],
+    ['lng', 'REAL DEFAULT 0'],
+    ['business_status', "TEXT DEFAULT ''"],
+    ['types', "TEXT DEFAULT '[]'"],
+    ['trust_score', 'INTEGER DEFAULT 0'],
+    ['urgency_score', 'INTEGER DEFAULT 0'],
+    ['best_sales_angle', "TEXT DEFAULT ''"],
+    ['objection_prediction', "TEXT DEFAULT ''"],
+    ['revenue_potential', "TEXT DEFAULT '{}'"],
+    ['risk_factors', "TEXT DEFAULT '[]'"],
+    ['website_review', "TEXT DEFAULT '{}'"],
+    ['outreach_whatsapp', "TEXT DEFAULT ''"],
+    ['outreach_linkedin', "TEXT DEFAULT ''"],
+    ['followup_1', "TEXT DEFAULT ''"],
+    ['followup_2', "TEXT DEFAULT ''"],
+    ['followup_3', "TEXT DEFAULT ''"],
   ];
   for (const [col, typedef] of migrations) {
     try {

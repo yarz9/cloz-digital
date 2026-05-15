@@ -1,5 +1,6 @@
 import { Outlet, NavLink, useLocation } from 'react-router-dom'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import ManagementLogin from './ManagementLogin'
 import {
   LayoutDashboard, Command, Search, GitBranch, Users, FileText, Send, Receipt,
   Globe, Server, Wrench, CheckSquare, Palette, FileBarChart, BookOpen, BarChart3,
@@ -98,6 +99,26 @@ const sections = [
 export default function ManagementLayout() {
   const location = useLocation()
   const [collapsed, setCollapsed] = useState({})
+  const [authenticated, setAuthenticated] = useState(null) // null = checking, true/false
+
+  useEffect(() => {
+    fetch('/api/management/auth/status')
+      .then(r => r.json())
+      .then(d => setAuthenticated(d.authenticated))
+      .catch(() => setAuthenticated(false))
+  }, [])
+
+  if (authenticated === null) {
+    return (
+      <div className="min-h-screen bg-bg flex items-center justify-center">
+        <div className="w-5 h-5 border-2 border-accent border-t-transparent rounded-full animate-spin" />
+      </div>
+    )
+  }
+
+  if (!authenticated) {
+    return <ManagementLogin onAuthenticated={() => setAuthenticated(true)} />
+  }
 
   const toggle = (title) => setCollapsed(prev => ({ ...prev, [title]: !prev[title] }))
 

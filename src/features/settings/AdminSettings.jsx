@@ -1,4 +1,5 @@
-import { Settings, User, Bell, Shield, Database, Globe } from 'lucide-react'
+import { Settings, User, Bell, Shield, Database, Globe, Mail } from 'lucide-react'
+import { NavLink } from 'react-router-dom'
 
 export default function AdminSettings() {
   return (
@@ -31,6 +32,17 @@ export default function AdminSettings() {
             <span className="text-[13px]">Session Timeout</span>
             <span className="text-[12px] text-text-secondary">24 hours</span>
           </div>
+        </div>
+      </div>
+
+      {/* Mail Accounts */}
+      <div className="bg-surface border border-border rounded-lg p-5">
+        <h2 className="text-[14px] font-semibold flex items-center gap-2 mb-4"><Mail size={15} className="text-accent" /> Mail Configuration</h2>
+        <div className="space-y-2">
+          <NavLink to="/admin/settings/mail-accounts" className="flex items-center justify-between p-3 bg-elevated hover:bg-raised rounded-md transition-colors">
+            <span className="text-[13px]">Mail Accounts</span>
+            <span className="text-[12px] text-accent">Configure</span>
+          </NavLink>
         </div>
       </div>
 
