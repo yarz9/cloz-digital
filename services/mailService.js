@@ -1,8 +1,122 @@
 import { ImapFlow } from 'imapflow';
 import nodemailer from 'nodemailer';
+import { Resend } from 'resend';
 import { decrypt } from './crypto.js';
 import { getDb } from '../database/init.js';
 import { randomUUID } from 'crypto';
+
+// ══════════════════════════════════════════════════════════════
+//  Resend API Client
+// ══════════════════════════════════════════════════════════════
+
+let resendClient = null;
+
+function getResendClient() {
+  if (!resendClient) {
+    const apiKey = process.env.RESEND_API_KEY;
+    if (!apiKey) return null;
+    resendClient = new Resend(apiKey);
+  }
+  return resendClient;
+}
+
+/**
+ * Check if Resend is configured and available.
+ */
+export function isResendConfigured() {
+  return !!process.env.RESEND_API_KEY;
+}
+
+/**
+ * Send an email via Resend API.
+ * Returns { success, messageId, message, details }
+ */
+export async function sendViaResend({ from, to, cc, bcc, subject, text, html, replyTo, headers }) {
+  const client = getResendClient();
+  if (!client) {
+    throw new Error('Resend API key not configured. Set RESEND_API_KEY in .env');
+  }
+
+  const toAddrs = Array.isArray(to) ? to : [to].filter(Boolean);
+  const ccAddrs = cc ? (Array.isArray(cc) ? cc : [cc]).filter(Boolean) : undefined;
+  const bccAddrs = bcc ? (Array.isArray(bcc) ? bcc : [bcc]).filter(Boolean) : undefined;
+
+  const payload = {
+    from,
+    to: toAddrs,
+    subject: subject || '(No Subject)',
+    text: text || html?.replace(/<[^>]+>/g, '') || '',
+    html: html || text || '',
+  };
+
+  if (ccAddrs?.length) payload.cc = ccAddrs;
+  if (bccAddrs?.length) payload.bcc = bccAddrs;
+  if (replyTo) payload.reply_to = replyTo;
+  if (headers) payload.headers = headers;
+
+  console.log(`[Resend] Sending: "${subject}" from ${from} to ${toAddrs.join(', ')}`);
+
+  const { data, error } = await client.emails.send(payload);
+
+  if (error) {
+    console.error(`[Resend] Send failed: ${error.message}`);
+    throw new Error(`Resend API error: ${error.message}`);
+  }
+
+  console.log(`[Resend] Sent successfully: messageId=${data.id}`);
+  return {
+    success: true,
+    messageId: data.id,
+    message: `Email sent via Resend`,
+    details: { id: data.id },
+  };
+}
+
+/**
+ * Test Resend API connectivity and domain verification.
+ */
+export async function testResendConnection() {
+  const client = getResendClient();
+  if (!client) {
+    return {
+      success: false,
+      message: 'Resend API key not configured. Set RESEND_API_KEY in .env',
+      code: 'NO_API_KEY',
+    };
+  }
+
+  try {
+    // Verify API key by listing domains
+    const { data, error } = await client.domains.list();
+    if (error) {
+      return {
+        success: false,
+        message: `Resend API error: ${error.message}`,
+        code: 'API_ERROR',
+      };
+    }
+
+    const domains = data?.data || [];
+    const verifiedDomains = domains.filter(d => d.status === 'verified');
+
+    return {
+      success: true,
+      message: `Resend connected. ${verifiedDomains.length} verified domain(s).`,
+      details: {
+        totalDomains: domains.length,
+        verifiedDomains: verifiedDomains.map(d => d.name),
+        domains: domains.map(d => ({ name: d.name, status: d.status })),
+      },
+    };
+  } catch (err) {
+    return {
+      success: false,
+      message: `Resend connection failed: ${err.message}`,
+      code: err.code || 'UNKNOWN',
+    };
+  }
+}
+
 
 // ══════════════════════════════════════════════════════════════
 //  IMAP Connection Service
@@ -198,7 +312,7 @@ export async function syncImapMessages(account, options = {}) {
 
 
 // ══════════════════════════════════════════════════════════════
-//  SMTP Service
+//  SMTP Service (fallback — only used if explicitly enabled)
 // ══════════════════════════════════════════════════════════════
 
 const SMTP_TIMEOUT = 15000; // 15 seconds
@@ -209,9 +323,6 @@ const SMTP_TIMEOUT = 15000; // 15 seconds
 function buildSmtpTransport(account) {
   const password = decrypt(account.smtp_password_encrypted);
   const port = account.smtp_port || 465;
-  // Port 465 = implicit TLS (secure: true)
-  // Port 587 = STARTTLS (secure: false, nodemailer upgrades automatically)
-  // Explicit encryption setting overrides, but port-based default is safest
   const secure = account.smtp_encryption === 'starttls' ? false
     : account.smtp_encryption === 'none' ? false
     : (port === 465 ? true : account.smtp_encryption === 'ssl_tls');
@@ -275,7 +386,7 @@ export async function testSmtpConnection(account) {
 /**
  * Send an email via SMTP using account credentials.
  */
-export async function sendEmail(account, { to, cc, bcc, subject, text, html, replyTo }) {
+export async function sendViaSmtp(account, { to, cc, bcc, subject, text, html, replyTo }) {
   let transporter;
   try {
     transporter = buildSmtpTransport(account);
@@ -292,39 +403,87 @@ export async function sendEmail(account, { to, cc, bcc, subject, text, html, rep
     });
 
     console.log(`[SMTP] Email sent: ${subject} → ${to} (messageId: ${info.messageId})`);
-    return info;
+    return {
+      success: true,
+      messageId: info.messageId,
+      message: 'Email sent via SMTP',
+      details: { messageId: info.messageId, response: info.response },
+    };
   } finally {
     try { transporter?.close(); } catch {}
   }
+}
+
+
+// ══════════════════════════════════════════════════════════════
+//  UNIFIED SEND — Resend first, SMTP fallback
+// ══════════════════════════════════════════════════════════════
+
+/**
+ * Send an email using the best available transport.
+ * Priority: Resend API (default) → SMTP (only if Resend unavailable and SMTP configured)
+ *
+ * @param {Object} account - Mail account record from DB
+ * @param {Object} emailData - { to, cc, bcc, subject, text, html, replyTo }
+ * @returns {{ success, messageId, message, transport, details }}
+ */
+export async function sendEmail(account, { to, cc, bcc, subject, text, html, replyTo }) {
+  const fromAddress = `"${account.display_name}" <${account.email}>`;
+
+  // 1. Try Resend API first (default transport)
+  if (isResendConfigured()) {
+    try {
+      const result = await sendViaResend({
+        from: fromAddress,
+        to,
+        cc,
+        bcc,
+        subject,
+        text,
+        html,
+        replyTo,
+      });
+      return { ...result, transport: 'resend' };
+    } catch (err) {
+      console.error(`[Send] Resend failed for ${account.email}: ${err.message}`);
+      // Fall through to SMTP if available
+      if (account.smtp_host && decrypt(account.smtp_password_encrypted)) {
+        console.log(`[Send] Falling back to SMTP for ${account.email}`);
+      } else {
+        throw err; // No fallback available
+      }
+    }
+  }
+
+  // 2. SMTP fallback
+  const smtpPassword = decrypt(account.smtp_password_encrypted);
+  if (account.smtp_host && smtpPassword) {
+    const result = await sendViaSmtp(account, { to, cc, bcc, subject, text, html, replyTo });
+    return { ...result, transport: 'smtp' };
+  }
+
+  throw new Error('No sending transport available. Configure RESEND_API_KEY or SMTP credentials.');
 }
 
 /**
  * Send a test email from the given account.
  */
 export async function sendTestEmail(account) {
-  const password = decrypt(account.smtp_password_encrypted);
-  if (!account.smtp_host) {
-    return { success: false, message: 'SMTP host is not configured', code: 'NO_HOST' };
-  }
-  if (!password) {
-    return { success: false, message: 'SMTP password is not configured', code: 'NO_PASS' };
-  }
-
   try {
-    console.log(`[SMTP Test Email] Sending test to ${account.email} via ${account.smtp_host}:${account.smtp_port}`);
+    console.log(`[Test Email] Sending test to ${account.email} via ${isResendConfigured() ? 'Resend' : 'SMTP'}`);
 
-    const info = await sendEmail(account, {
+    const result = await sendEmail(account, {
       to: account.email,
-      subject: `Cloz Digital — SMTP Test (${new Date().toLocaleTimeString()})`,
-      text: `This is a test email from Cloz Digital Mail.\n\nAccount: ${account.display_name} <${account.email}>\nSMTP: ${account.smtp_host}:${account.smtp_port}\nTime: ${new Date().toISOString()}\n\nIf you received this, SMTP is working correctly.`,
+      subject: `Cloz Digital — Send Test (${new Date().toLocaleTimeString()})`,
+      text: `This is a test email from Cloz Digital Mail.\n\nAccount: ${account.display_name} <${account.email}>\nTransport: ${isResendConfigured() ? 'Resend API' : 'SMTP'}\nTime: ${new Date().toISOString()}\n\nIf you received this, outbound email is working correctly.`,
       html: `<div style="font-family:system-ui;max-width:480px;margin:0 auto;padding:20px">
-        <h2 style="color:#3B82F6;margin-bottom:8px">SMTP Test Successful</h2>
+        <h2 style="color:#3B82F6;margin-bottom:8px">Send Test Successful</h2>
         <p style="color:#666;font-size:14px">This is a test email from Cloz Digital Mail.</p>
         <hr style="border:none;border-top:1px solid #e5e5e5;margin:16px 0"/>
         <table style="font-size:13px;color:#444">
           <tr><td style="padding:4px 12px 4px 0;color:#888">Account:</td><td>${account.display_name}</td></tr>
           <tr><td style="padding:4px 12px 4px 0;color:#888">Email:</td><td>${account.email}</td></tr>
-          <tr><td style="padding:4px 12px 4px 0;color:#888">Server:</td><td>${account.smtp_host}:${account.smtp_port}</td></tr>
+          <tr><td style="padding:4px 12px 4px 0;color:#888">Transport:</td><td>${isResendConfigured() ? 'Resend API' : 'SMTP'}</td></tr>
           <tr><td style="padding:4px 12px 4px 0;color:#888">Time:</td><td>${new Date().toISOString()}</td></tr>
         </table>
       </div>`,
@@ -334,19 +493,20 @@ export async function sendTestEmail(account) {
     const db = getDb();
     db.prepare('UPDATE mail_accounts SET last_smtp_test_at = datetime("now") WHERE id = ?').run(account.id);
 
-    console.log(`[SMTP Test Email] Success for ${account.email}: messageId=${info.messageId}`);
+    console.log(`[Test Email] Success for ${account.email}: transport=${result.transport}, messageId=${result.messageId}`);
     return {
       success: true,
-      message: `Test email sent to ${account.email}`,
-      details: { messageId: info.messageId, response: info.response },
+      message: `Test email sent to ${account.email} via ${result.transport}`,
+      transport: result.transport,
+      details: { messageId: result.messageId, transport: result.transport },
     };
   } catch (err) {
-    console.error(`[SMTP Test Email] Failed for ${account.email}: code=${err.code} message=${err.message}`);
+    console.error(`[Test Email] Failed for ${account.email}: ${err.message}`);
     return {
       success: false,
       message: `Failed to send test email: ${err.message}`,
       code: err.code || 'UNKNOWN',
-      details: { error: err.message, code: err.code },
+      details: { error: err.message },
     };
   }
 }
@@ -406,13 +566,13 @@ export function stopSyncWorker() {
 
 
 // ══════════════════════════════════════════════════════════════
-//  SMTP Send Queue Processor
+//  Send Queue Processor — Resend first, SMTP fallback
 // ══════════════════════════════════════════════════════════════
 
 let queueInterval = null;
 
 /**
- * Process the mail send queue — picks up pending messages and sends via SMTP.
+ * Process the mail send queue — picks up pending messages and sends via Resend/SMTP.
  */
 export function startSendQueueProcessor() {
   if (queueInterval) return;
@@ -426,8 +586,16 @@ export function startSendQueueProcessor() {
 
       for (const item of pending) {
         const account = db.prepare('SELECT * FROM mail_accounts WHERE id = ? OR key = ?').get(item.account_id, item.account_id);
-        if (!account || !account.smtp_host || !decrypt(account.smtp_password_encrypted)) {
-          db.prepare("UPDATE mail_send_queue SET status = 'failed', error = ?, attempted_at = datetime('now') WHERE id = ?").run('Account not configured for SMTP', item.id);
+        if (!account) {
+          db.prepare("UPDATE mail_send_queue SET status = 'failed', error = ?, attempted_at = datetime('now') WHERE id = ?").run('Account not found', item.id);
+          continue;
+        }
+
+        // Check if any transport is available
+        const hasResend = isResendConfigured();
+        const hasSmtp = account.smtp_host && decrypt(account.smtp_password_encrypted);
+        if (!hasResend && !hasSmtp) {
+          db.prepare("UPDATE mail_send_queue SET status = 'failed', error = ?, attempted_at = datetime('now') WHERE id = ?").run('No sending transport configured (RESEND_API_KEY or SMTP)', item.id);
           continue;
         }
 
@@ -436,7 +604,7 @@ export function startSendQueueProcessor() {
           const ccEmails = JSON.parse(item.cc_emails || '[]');
           const bccEmails = JSON.parse(item.bcc_emails || '[]');
 
-          await sendEmail(account, {
+          const result = await sendEmail(account, {
             to: toEmails,
             cc: ccEmails.length > 0 ? ccEmails : undefined,
             bcc: bccEmails.length > 0 ? bccEmails : undefined,
@@ -446,7 +614,9 @@ export function startSendQueueProcessor() {
             replyTo: item.in_reply_to || undefined,
           });
 
-          db.prepare("UPDATE mail_send_queue SET status = 'sent', attempted_at = datetime('now') WHERE id = ?").run(item.id);
+          db.prepare("UPDATE mail_send_queue SET status = 'sent', attempted_at = datetime('now'), error = ? WHERE id = ?").run(
+            `transport=${result.transport},messageId=${result.messageId}`, item.id
+          );
           db.prepare("UPDATE mail_messages SET is_sent = 1, sent_at = datetime('now') WHERE id = ?").run(item.message_id);
         } catch (err) {
           db.prepare("UPDATE mail_send_queue SET status = 'failed', error = ?, attempted_at = datetime('now') WHERE id = ?").run(err.message, item.id);

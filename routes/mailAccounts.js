@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { getDb } from '../database/init.js';
 import { encrypt, decrypt, maskPassword, isEncrypted } from '../services/crypto.js';
-import { testImapConnection, testSmtpConnection, sendTestEmail, syncImapMessages } from '../services/mailService.js';
+import { testImapConnection, testSmtpConnection, sendTestEmail, syncImapMessages, testResendConnection, isResendConfigured } from '../services/mailService.js';
 import { addLog } from './logs.js';
 import { randomUUID } from 'crypto';
 
@@ -64,6 +64,26 @@ router.get('/presets', (_req, res) => {
 });
 
 // ══════════════════════════════════════════════════════════════
+//  RESEND STATUS
+// ══════════════════════════════════════════════════════════════
+
+router.get('/resend-status', (_req, res) => {
+  res.json({
+    configured: isResendConfigured(),
+    isDefault: isResendConfigured(),
+  });
+});
+
+router.post('/test-resend', async (_req, res) => {
+  try {
+    const result = await testResendConnection();
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ success: false, message: `Resend test error: ${err.message}` });
+  }
+});
+
+// ══════════════════════════════════════════════════════════════
 //  DEFAULT STARTER ACCOUNTS
 // ══════════════════════════════════════════════════════════════
 
@@ -113,6 +133,9 @@ function sanitizeAccount(acct) {
     // Connection status
     imap_configured: !!(acct.imap_host && imapPass),
     smtp_configured: !!(acct.smtp_host && smtpPass),
+    // Sending transport
+    resend_configured: isResendConfigured(),
+    send_transport: isResendConfigured() ? 'resend' : (!!(acct.smtp_host && smtpPass) ? 'smtp' : 'none'),
   };
 }
 

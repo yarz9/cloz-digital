@@ -253,6 +253,8 @@ export const mailAccounts = {
   sendTest: (id) => mailAcctPost(`/${id}/send-test`),
   sync: (id) => mailAcctPost(`/${id}/sync`),
   presets: () => mailAcctGet('/presets'),
+  resendStatus: () => mailAcctGet('/resend-status'),
+  testResend: () => mailAcctPost('/test-resend'),
 };
 
 // ── Audit Lab API ──

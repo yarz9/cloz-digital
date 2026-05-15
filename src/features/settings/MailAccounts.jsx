@@ -3,7 +3,7 @@ import {
   Mail, Plus, Settings, Shield, Server, RefreshCw, Loader2, CheckCircle, XCircle,
   AlertCircle, X, Eye, EyeOff, Trash2, Star, Send, Download, Clock, ChevronDown,
   ChevronRight, Globe, Zap, ArrowRight, Copy, Edit3, ToggleLeft, ToggleRight,
-  FolderOpen, Lock, Wifi, WifiOff
+  FolderOpen, Lock, Wifi, WifiOff, Cloud, CloudOff
 } from 'lucide-react'
 
 const API = '/api/mail/accounts'
@@ -48,10 +48,13 @@ const PRESET_META = {
 export default function MailAccounts() {
   const [accounts, setAccounts] = useState([])
   const [presets, setPresets] = useState({})
+  const [resendStatus, setResendStatus] = useState({ configured: false })
   const [loading, setLoading] = useState(true)
   const [editing, setEditing] = useState(null) // null | 'new' | account id
   const [error, setError] = useState('')
   const [toast, setToast] = useState(null)
+  const [testingResend, setTestingResend] = useState(false)
+  const [resendResult, setResendResult] = useState(null)
 
   const loadAccounts = useCallback(async () => {
     try {
@@ -64,6 +67,7 @@ export default function MailAccounts() {
   useEffect(() => {
     loadAccounts()
     api('/presets').then(setPresets).catch(() => {})
+    api('/resend-status').then(setResendStatus).catch(() => {})
   }, [])
 
   const showToast = (message, type = 'success') => {
@@ -88,7 +92,7 @@ export default function MailAccounts() {
             <Mail size={18} className="text-accent" />Mail Accounts
           </h1>
           <p className="text-[12px] text-text-secondary mt-0.5">
-            Configure IMAP and SMTP credentials for your business email accounts
+            Configure IMAP for receiving and Resend API for sending business emails
           </p>
         </div>
         <button
@@ -113,6 +117,70 @@ export default function MailAccounts() {
         }`}>
           {toast.type === 'success' ? <CheckCircle size={14} /> : <XCircle size={14} />}
           {toast.message}
+        </div>
+      )}
+
+      {/* Resend API Status */}
+      <div className={`px-4 py-3 rounded-lg border text-[12px] flex items-center gap-3 ${
+        resendStatus.configured
+          ? 'bg-success/5 border-success/20'
+          : 'bg-warning/5 border-warning/20'
+      }`}>
+        {resendStatus.configured ? (
+          <Cloud size={16} className="text-success shrink-0" />
+        ) : (
+          <CloudOff size={16} className="text-warning shrink-0" />
+        )}
+        <div className="flex-1">
+          <span className="font-semibold">
+            {resendStatus.configured ? 'Resend API Connected' : 'Resend API Not Configured'}
+          </span>
+          <span className="text-text-tertiary ml-2">
+            {resendStatus.configured
+              ? 'All outbound emails sent via Resend API'
+              : 'Set RESEND_API_KEY in .env to enable outbound email'}
+          </span>
+        </div>
+        {resendStatus.configured && (
+          <button
+            onClick={async () => {
+              setTestingResend(true)
+              setResendResult(null)
+              try {
+                const result = await api('/test-resend', { method: 'POST' })
+                setResendResult(result)
+                showToast(result.message, result.success ? 'success' : 'error')
+              } catch (e) {
+                setResendResult({ success: false, message: e.message })
+                showToast(e.message, 'error')
+              } finally {
+                setTestingResend(false)
+              }
+            }}
+            disabled={testingResend}
+            className="flex items-center gap-1 px-2.5 py-1.5 text-[10px] font-medium bg-elevated hover:bg-raised border border-border rounded-md disabled:opacity-50 transition-colors shrink-0"
+          >
+            {testingResend ? <Loader2 size={10} className="animate-spin" /> : <Zap size={10} />}
+            Test Connection
+          </button>
+        )}
+        <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${
+          resendStatus.configured ? 'bg-success/10 text-success' : 'bg-warning/10 text-warning'
+        }`}>
+          {resendStatus.configured ? 'ACTIVE' : 'INACTIVE'}
+        </span>
+      </div>
+
+      {resendResult && (
+        <div className={`px-4 py-2 rounded-lg text-[11px] flex items-center gap-2 ${
+          resendResult.success ? 'bg-success/5 border border-success/20 text-success' : 'bg-error/5 border border-error/20 text-error'
+        }`}>
+          {resendResult.success ? <CheckCircle size={12} /> : <XCircle size={12} />}
+          <span className="flex-1">{resendResult.message}</span>
+          {resendResult.details?.verifiedDomains?.length > 0 && (
+            <span className="text-text-tertiary">Domains: {resendResult.details.verifiedDomains.join(', ')}</span>
+          )}
+          <button onClick={() => setResendResult(null)}><X size={12} /></button>
         </div>
       )}
 
@@ -197,16 +265,16 @@ function AccountCard({ account, isEditing, onEdit, onUpdate, onToast, presets })
       <div className="px-5 py-4 flex items-center gap-4">
         {/* Status indicator */}
         <div className={`w-10 h-10 rounded-lg flex items-center justify-center text-[18px] ${
-          account.imap_configured && account.smtp_configured
+          account.imap_configured && account.send_transport !== 'none'
             ? 'bg-success/10'
-            : account.imap_configured || account.smtp_configured
+            : account.imap_configured || account.send_transport !== 'none'
             ? 'bg-warning/10'
             : 'bg-elevated'
         }`}>
           <Mail size={18} className={
-            account.imap_configured && account.smtp_configured
+            account.imap_configured && account.send_transport !== 'none'
               ? 'text-success'
-              : account.imap_configured || account.smtp_configured
+              : account.imap_configured || account.send_transport !== 'none'
               ? 'text-warning'
               : 'text-text-tertiary'
           } />
@@ -225,7 +293,7 @@ function AccountCard({ account, isEditing, onEdit, onUpdate, onToast, presets })
         {/* Connection badges */}
         <div className="flex items-center gap-2 shrink-0">
           <ConnectionBadge label="IMAP" configured={account.imap_configured} lastTest={account.last_imap_test_at} />
-          <ConnectionBadge label="SMTP" configured={account.smtp_configured} lastTest={account.last_smtp_test_at} />
+          <SendTransportBadge transport={account.send_transport} />
           {account.sync_enabled ? (
             <span className="text-[9px] font-bold bg-success/10 text-success px-1.5 py-0.5 rounded flex items-center gap-0.5">
               <RefreshCw size={8} />SYNC
@@ -246,7 +314,7 @@ function AccountCard({ account, isEditing, onEdit, onUpdate, onToast, presets })
             onClick={() => runAction('test-imap', 'IMAP')} />
           <ActionBtn icon={Send} label="Test SMTP" loading={testing === 'test-smtp'} disabled={!account.smtp_configured}
             onClick={() => runAction('test-smtp', 'SMTP')} />
-          <ActionBtn icon={Mail} label="Send Test" loading={testing === 'send-test'} disabled={!account.smtp_configured}
+          <ActionBtn icon={Mail} label="Send Test" loading={testing === 'send-test'} disabled={account.send_transport === 'none'}
             onClick={() => runAction('send-test', 'Send')} />
           <ActionBtn icon={Download} label="Sync Now" loading={testing === 'sync'} disabled={!account.imap_configured}
             onClick={() => runAction('sync', 'Sync')} />
@@ -454,7 +522,7 @@ function AccountForm({ account, presets, onClose, onSaved, onToast, onDelete }) 
       </Section>
 
       {/* SMTP */}
-      <Section title="SMTP Settings (Outgoing)" icon={Send}>
+      <Section title="SMTP Settings (Fallback — optional if Resend configured)" icon={Send}>
         <div className="grid grid-cols-3 gap-3">
           <Field label="SMTP Host" value={form.smtp_host} onChange={v => set('smtp_host', v)} placeholder="smtp.zoho.com" />
           <Field label="Port" value={form.smtp_port} onChange={v => set('smtp_port', parseInt(v) || 587)} type="number" />
@@ -605,6 +673,28 @@ function Toggle({ label, checked, onChange }) {
       </button>
       <span className="text-[11px] text-text-secondary">{label}</span>
     </label>
+  )
+}
+
+function SendTransportBadge({ transport }) {
+  if (transport === 'resend') {
+    return (
+      <span className="text-[9px] font-bold bg-accent/10 text-accent px-1.5 py-0.5 rounded flex items-center gap-0.5">
+        <Cloud size={8} />RESEND
+      </span>
+    )
+  }
+  if (transport === 'smtp') {
+    return (
+      <span className="text-[9px] font-bold bg-warning/10 text-warning px-1.5 py-0.5 rounded flex items-center gap-0.5">
+        <Send size={8} />SMTP
+      </span>
+    )
+  }
+  return (
+    <span className="text-[9px] font-bold bg-elevated text-text-tertiary px-1.5 py-0.5 rounded flex items-center gap-0.5">
+      <CloudOff size={8} />NO SEND
+    </span>
   )
 }
 
