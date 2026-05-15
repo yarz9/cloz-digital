@@ -74,3 +74,157 @@ body {
 
 h1, h2, h3, h4, h5, h6 { font-family: var(--font-display); }
 input, textarea, select, button { font-family: inherit; font-size: inherit; }
+
+/* ══════════════════════════════════════════════════════════════
+   TipTap Editor Styles
+   ══════════════════════════════════════════════════════════════ */
+
+.email-editor .tiptap {
+  min-height: 200px;
+  padding: 12px 16px;
+  font-size: 13px;
+  line-height: 1.65;
+  color: var(--color-text-primary);
+  outline: none;
+}
+
+.email-editor .tiptap p { margin: 0 0 8px; }
+.email-editor .tiptap h1 { font-size: 24px; font-weight: 700; margin: 16px 0 8px; line-height: 1.3; }
+.email-editor .tiptap h2 { font-size: 20px; font-weight: 600; margin: 14px 0 6px; line-height: 1.3; }
+.email-editor .tiptap h3 { font-size: 16px; font-weight: 600; margin: 12px 0 4px; line-height: 1.4; }
+
+.email-editor .tiptap ul,
+.email-editor .tiptap ol { padding-left: 24px; margin: 8px 0; }
+.email-editor .tiptap li { margin: 2px 0; }
+.email-editor .tiptap ul { list-style: disc; }
+.email-editor .tiptap ol { list-style: decimal; }
+
+.email-editor .tiptap ul[data-type="taskList"] {
+  list-style: none;
+  padding-left: 4px;
+}
+.email-editor .tiptap ul[data-type="taskList"] li {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+.email-editor .tiptap ul[data-type="taskList"] li label {
+  margin-top: 3px;
+}
+
+.email-editor .tiptap blockquote {
+  border-left: 3px solid var(--color-accent);
+  padding-left: 12px;
+  margin: 12px 0;
+  color: var(--color-text-secondary);
+  font-style: italic;
+}
+
+.email-editor .tiptap hr {
+  border: none;
+  border-top: 1px solid var(--color-border);
+  margin: 16px 0;
+}
+
+.email-editor .tiptap a {
+  color: var(--color-accent);
+  text-decoration: underline;
+  cursor: pointer;
+}
+.email-editor .tiptap a:hover { opacity: 0.85; }
+
+.email-editor .tiptap img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 4px;
+  margin: 8px 0;
+}
+
+.email-editor .tiptap pre {
+  background: var(--color-elevated);
+  border-radius: 6px;
+  padding: 12px 16px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  overflow-x: auto;
+  margin: 12px 0;
+}
+
+.email-editor .tiptap code {
+  background: var(--color-elevated);
+  border-radius: 3px;
+  padding: 1px 4px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+
+.email-editor .tiptap pre code {
+  background: none;
+  padding: 0;
+}
+
+.email-editor .tiptap table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 12px 0;
+  font-size: 12px;
+}
+.email-editor .tiptap th,
+.email-editor .tiptap td {
+  border: 1px solid var(--color-border);
+  padding: 6px 10px;
+  text-align: left;
+  min-width: 80px;
+}
+.email-editor .tiptap th {
+  background: var(--color-elevated);
+  font-weight: 600;
+}
+
+.email-editor .tiptap .is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  float: left;
+  color: var(--color-text-tertiary);
+  pointer-events: none;
+  height: 0;
+}
+
+/* ── Email Rendered View (reading pane) ── */
+.email-rendered-view {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-size: 13px;
+  line-height: 1.65;
+  color: var(--color-text-secondary);
+  word-break: break-word;
+}
+.email-rendered-view p { margin: 0 0 8px; }
+.email-rendered-view h1 { font-size: 22px; font-weight: 700; color: var(--color-text-primary); margin: 16px 0 8px; }
+.email-rendered-view h2 { font-size: 18px; font-weight: 600; color: var(--color-text-primary); margin: 14px 0 6px; }
+.email-rendered-view h3 { font-size: 15px; font-weight: 600; color: var(--color-text-primary); margin: 12px 0 4px; }
+.email-rendered-view a { color: var(--color-accent); text-decoration: underline; }
+.email-rendered-view ul, .email-rendered-view ol { padding-left: 24px; margin: 8px 0; }
+.email-rendered-view li { margin: 2px 0; }
+.email-rendered-view ul { list-style: disc; }
+.email-rendered-view ol { list-style: decimal; }
+.email-rendered-view img { max-width: 100%; height: auto; border-radius: 4px; }
+.email-rendered-view blockquote { border-left: 3px solid var(--color-border); padding-left: 12px; margin: 12px 0; color: var(--color-text-tertiary); }
+.email-rendered-view hr { border: none; border-top: 1px solid var(--color-border); margin: 16px 0; }
+.email-rendered-view table { border-collapse: collapse; width: 100%; margin: 8px 0; }
+.email-rendered-view th, .email-rendered-view td { border: 1px solid var(--color-border); padding: 6px 10px; }
+.email-rendered-view th { background: var(--color-elevated); font-weight: 600; }
+.email-rendered-view pre { background: var(--color-elevated); padding: 12px; border-radius: 6px; overflow-x: auto; }
+.email-rendered-view code { font-family: var(--font-mono); font-size: 12px; }
+
+/* Dark mode email preview */
+.dark-email-preview { color: #e5e5e5 !important; }
+.dark-email-preview a { color: #60A5FA !important; }
+.dark-email-preview table { border-color: #333 !important; }
+.dark-email-preview th, .dark-email-preview td { border-color: #333 !important; }
+.dark-email-preview th { background: #1a1a1a !important; }
+
+/* Context menu animation */
+@keyframes context-menu-in {
+  from { opacity: 0; transform: scale(0.95) translateY(-4px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
+}
+.animate-in { animation: context-menu-in 0.15s ease-out; }

@@ -1,12 +1,16 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import {
   Inbox, Send, FileEdit, Upload, Clock, Star, Archive, Trash2, AlertTriangle, LayoutTemplate,
   Target, Users, Receipt, LifeBuoy, Megaphone, Repeat, Plus, Search, RefreshCw, Sparkles,
   Mail as MailIcon, ChevronDown, X, MoreHorizontal, ArrowLeft, Reply, ReplyAll, Forward,
   Tag, FolderOpen, Loader2, Check, Languages, Wand2, MessageSquare, Brain, Zap,
-  FileText, DollarSign, Send as SendIcon
+  FileText, DollarSign, Send as SendIcon, Eye, Monitor
 } from 'lucide-react'
 import { mail } from '../../lib/api'
+import TipTapEditor from './editor/TipTapEditor'
+import MailViewer, { EmailPreview } from './components/MailViewer'
+import { SIGNATURES, BILLING_FOOTER_HTML, getSignatureForSender } from './data/signatures'
+import { EMAIL_TEMPLATES, SNIPPETS, MERGE_TAGS } from './data/templates'
 
 // ── Icon map for folders ──
 const ICONS = {
@@ -37,7 +41,6 @@ export default function Mail() {
   const [searchQuery, setSearchQuery] = useState('')
   const [templates, setTemplates] = useState([])
 
-  // Load folders + stats
   const loadFolders = useCallback(async () => {
     try {
       const [f, s] = await Promise.all([mail.folders(), mail.stats()])
@@ -46,7 +49,6 @@ export default function Mail() {
     } catch { /* silent */ }
   }, [])
 
-  // Load messages for folder
   const loadMessages = useCallback(async (folder, search) => {
     setLoading(true)
     try {
@@ -61,17 +63,15 @@ export default function Mail() {
   useEffect(() => { loadFolders() }, [loadFolders])
   useEffect(() => { loadMessages(activeFolder, searchQuery) }, [activeFolder, searchQuery, loadMessages])
 
-  // Open message detail
   const openMessage = async (msg) => {
     setSelectedMsg(msg.id)
     try {
       const data = await mail.message(msg.id)
       setMsgDetail(data)
-      loadFolders() // refresh unread counts
+      loadFolders()
     } catch { /* silent */ }
   }
 
-  // Actions
   const toggleStar = async (id, e) => {
     e.stopPropagation()
     const msg = messages.find(m => m.id === id)
@@ -105,14 +105,12 @@ export default function Mail() {
           </button>
         </div>
 
-        {/* Stats bar */}
         <div className="px-3 py-2 border-b border-border grid grid-cols-3 gap-1 text-center">
           <div><div className="text-[15px] font-semibold text-text-primary">{stats.unread || 0}</div><div className="text-[9px] text-text-tertiary uppercase">Unread</div></div>
           <div><div className="text-[15px] font-semibold text-text-primary">{stats.sentToday || 0}</div><div className="text-[9px] text-text-tertiary uppercase">Sent</div></div>
           <div><div className="text-[15px] font-semibold text-text-primary">{stats.drafts || 0}</div><div className="text-[9px] text-text-tertiary uppercase">Drafts</div></div>
         </div>
 
-        {/* Folders */}
         <nav className="flex-1 overflow-y-auto py-2 px-2 space-y-0.5">
           <div className="px-2 pt-1 pb-1.5"><span className="text-[9px] font-semibold uppercase tracking-wider text-text-tertiary">Mailbox</span></div>
           {folders.system?.map(f => <FolderItem key={f.key} folder={f} active={activeFolder === f.key} onClick={() => { setActiveFolder(f.key); setSelectedMsg(null); setMsgDetail(null) }} />)}
@@ -121,7 +119,6 @@ export default function Mail() {
           {folders.business?.map(f => <FolderItem key={f.key} folder={f} active={activeFolder === f.key} onClick={() => { setActiveFolder(f.key); setSelectedMsg(null); setMsgDetail(null) }} />)}
         </nav>
 
-        {/* AI button */}
         <div className="p-2 border-t border-border">
           <button onClick={() => setShowAI(!showAI)} className={`w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-[12px] font-medium transition-colors ${showAI ? 'bg-accent-muted text-accent' : 'bg-elevated text-text-secondary hover:text-text-primary'}`}>
             <Sparkles size={13} /> AI Assistant
@@ -131,7 +128,6 @@ export default function Mail() {
 
       {/* ── Message List ── */}
       <div className="w-80 shrink-0 border-r border-border flex flex-col bg-bg">
-        {/* Search + actions */}
         <div className="p-2 border-b border-border flex items-center gap-2">
           <div className="flex-1 relative">
             <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-text-tertiary" />
@@ -147,13 +143,11 @@ export default function Mail() {
           </button>
         </div>
 
-        {/* Folder title */}
         <div className="px-3 py-2 border-b border-border flex items-center justify-between">
           <h3 className="text-[13px] font-semibold text-text-primary capitalize">{activeFolder.replace('-', ' ')}</h3>
           <span className="text-[11px] text-text-tertiary">{messages.length} messages</span>
         </div>
 
-        {/* Message list */}
         <div className="flex-1 overflow-y-auto">
           {loading ? (
             <div className="flex items-center justify-center py-12 text-text-tertiary"><Loader2 size={18} className="animate-spin" /></div>
@@ -203,8 +197,6 @@ export default function Mail() {
           <ComposePanel
             onClose={() => setShowCompose(false)}
             onSent={() => { setShowCompose(false); loadMessages(activeFolder, searchQuery); loadFolders() }}
-            templates={templates}
-            loadTemplates={async () => { if (templates.length === 0) { try { setTemplates(await mail.templates()) } catch {} } }}
           />
         ) : msgDetail ? (
           <ReadingPane
@@ -212,8 +204,6 @@ export default function Mail() {
             onClose={() => { setSelectedMsg(null); setMsgDetail(null) }}
             onTrash={() => trashMessage(msgDetail.message.id)}
             onArchive={() => archiveMessage(msgDetail.message.id)}
-            onReply={() => { /* open compose in reply mode */ }}
-            onShowCompose={setShowCompose}
           />
         ) : (
           <div className="flex-1 flex flex-col items-center justify-center text-text-tertiary">
@@ -227,22 +217,16 @@ export default function Mail() {
       {/* ── AI Assistant Panel ── */}
       {showAI && (
         <aside className="w-72 shrink-0 border-l border-border bg-surface flex flex-col">
-          <AIPanel
-            message={msgDetail?.message}
-            onClose={() => setShowAI(false)}
-            onInsert={(text) => {
-              // Could be used to insert AI text into compose
-            }}
-          />
+          <AIPanel message={msgDetail?.message} onClose={() => setShowAI(false)} />
         </aside>
       )}
     </div>
   )
 }
 
-// ═══════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════════
 //  FOLDER ITEM
-// ═══════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════════
 
 function FolderItem({ folder, active, onClick }) {
   const Icon = ICONS[folder.icon] || FolderOpen
@@ -262,29 +246,31 @@ function FolderItem({ folder, active, onClick }) {
   )
 }
 
-// ═══════════════════════════════════════════
-//  READING PANE
-// ═══════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════════
+//  READING PANE — with proper HTML rendering
+// ═══════════════════════════════════════════════════════════════
 
 function ReadingPane({ data, onClose, onTrash, onArchive }) {
   const { message: msg, thread } = data
   const [showThread, setShowThread] = useState(false)
-  const [replyMode, setReplyMode] = useState(null) // null | 'reply' | 'replyAll' | 'forward'
-  const [replyBody, setReplyBody] = useState('')
+  const [replyMode, setReplyMode] = useState(null)
   const [replySender, setReplySender] = useState('general')
   const [sending, setSending] = useState(false)
+  const replyEditorRef = useRef(null)
 
   const handleReply = async () => {
-    if (!replyBody.trim()) return
+    const body = replyEditorRef.current?.getHTML() || ''
+    if (!body.trim() || body === '<p></p>') return
     setSending(true)
     try {
       if (replyMode === 'forward') {
-        await mail.forward({ messageId: msg.id, sender: replySender, to: replyBody.split('\n')[0], note: replyBody.split('\n').slice(1).join('\n') })
+        const text = replyEditorRef.current?.getText() || ''
+        const firstLine = text.split('\n')[0]
+        await mail.forward({ messageId: msg.id, sender: replySender, to: firstLine, note: text.split('\n').slice(1).join('\n') })
       } else {
-        await mail.reply({ messageId: msg.id, sender: replySender, body: replyBody, replyAll: replyMode === 'replyAll' })
+        await mail.reply({ messageId: msg.id, sender: replySender, body, replyAll: replyMode === 'replyAll' })
       }
       setReplyMode(null)
-      setReplyBody('')
     } catch { /* silent */ }
     setSending(false)
   }
@@ -321,27 +307,29 @@ function ReadingPane({ data, onClose, onTrash, onArchive }) {
         </button>
       )}
 
-      {/* Body */}
-      <div className="flex-1 overflow-y-auto px-4 py-4">
+      {/* Body — Using MailViewer for proper HTML rendering */}
+      <div className="flex-1 overflow-hidden">
         {showThread && thread?.length > 1 ? (
-          thread.map((t, i) => (
-            <div key={t.id} className={`mb-4 pb-4 ${i < thread.length - 1 ? 'border-b border-border' : ''}`}>
-              <div className="flex items-center gap-2 mb-2">
-                <span className="text-[11px] font-medium text-text-primary">{t.from_name}</span>
-                <span className="text-[10px] text-text-tertiary">{formatDateTime(t.sent_at || t.created_at)}</span>
+          <div className="overflow-y-auto h-full px-4 py-4">
+            {thread.map((t, i) => (
+              <div key={t.id} className={`mb-4 pb-4 ${i < thread.length - 1 ? 'border-b border-border' : ''}`}>
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="text-[11px] font-medium text-text-primary">{t.from_name}</span>
+                  <span className="text-[10px] text-text-tertiary">{formatDateTime(t.sent_at || t.created_at)}</span>
+                </div>
+                <MailViewer bodyText={t.body_text} bodyHtml={t.body_html} />
               </div>
-              <div className="text-[13px] text-text-secondary leading-relaxed whitespace-pre-wrap">{t.body_text}</div>
-            </div>
-          ))
+            ))}
+          </div>
         ) : (
-          <div className="text-[13px] text-text-secondary leading-relaxed whitespace-pre-wrap">{msg.body_text}</div>
+          <MailViewer bodyText={msg.body_text} bodyHtml={msg.body_html} className="h-full" />
         )}
       </div>
 
-      {/* Reply area */}
+      {/* Reply area with TipTap editor */}
       {replyMode && (
-        <div className="border-t border-border bg-surface p-3">
-          <div className="flex items-center justify-between mb-2">
+        <div className="border-t border-border bg-surface flex flex-col max-h-[40%]">
+          <div className="flex items-center justify-between px-3 py-2 border-b border-border">
             <span className="text-[11px] font-medium text-text-tertiary uppercase">
               {replyMode === 'reply' ? 'Reply' : replyMode === 'replyAll' ? 'Reply All' : 'Forward'}
             </span>
@@ -350,13 +338,14 @@ function ReadingPane({ data, onClose, onTrash, onArchive }) {
               <button onClick={() => setReplyMode(null)} className="p-1 rounded hover:bg-elevated text-text-tertiary"><X size={14} /></button>
             </div>
           </div>
-          <textarea
-            value={replyBody}
-            onChange={e => setReplyBody(e.target.value)}
-            placeholder={replyMode === 'forward' ? 'Enter recipient email on first line, then your note...' : 'Type your reply...'}
-            className="w-full h-28 bg-elevated border border-border rounded-md px-3 py-2 text-[12px] text-text-primary placeholder:text-text-tertiary focus:border-accent focus:outline-none resize-none"
-          />
-          <div className="flex justify-end mt-2">
+          <div className="flex-1 overflow-y-auto">
+            <TipTapEditor
+              ref={replyEditorRef}
+              placeholder={replyMode === 'forward' ? 'Enter recipient email, then your message...' : 'Type your reply...'}
+              sender={replySender}
+            />
+          </div>
+          <div className="flex justify-end px-3 py-2 border-t border-border">
             <button onClick={handleReply} disabled={sending} className="flex items-center gap-1.5 px-4 py-1.5 bg-accent hover:bg-accent-hover text-white rounded-md text-[12px] font-medium transition-colors disabled:opacity-50">
               {sending ? <Loader2 size={13} className="animate-spin" /> : <Send size={13} />}
               Send
@@ -368,51 +357,82 @@ function ReadingPane({ data, onClose, onTrash, onArchive }) {
   )
 }
 
-// ═══════════════════════════════════════════
-//  COMPOSE PANEL
-// ═══════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════════
+//  COMPOSE PANEL — Premium TipTap-powered composer
+// ═══════════════════════════════════════════════════════════════
 
-function ComposePanel({ onClose, onSent, templates, loadTemplates }) {
+function ComposePanel({ onClose, onSent }) {
   const [sender, setSender] = useState('general')
   const [to, setTo] = useState('')
   const [cc, setCc] = useState('')
   const [subject, setSubject] = useState('')
-  const [body, setBody] = useState('')
+  const [bodyHtml, setBodyHtml] = useState('')
   const [showCc, setShowCc] = useState(false)
   const [saving, setSaving] = useState(false)
   const [sending, setSending] = useState(false)
-  const [showTemplates, setShowTemplates] = useState(false)
   const [aiLoading, setAiLoading] = useState(false)
   const [showAiDraft, setShowAiDraft] = useState(false)
+  const [showTemplates, setShowTemplates] = useState(false)
+  const [showPreview, setShowPreview] = useState(false)
   const [aiPurpose, setAiPurpose] = useState('')
   const [aiCategory, setAiCategory] = useState('general')
+  const [autosaveTimer, setAutosaveTimer] = useState(null)
+  const [lastSaved, setLastSaved] = useState(null)
+  const editorRef = useRef(null)
 
-  useEffect(() => { loadTemplates() }, [loadTemplates])
+  // Auto-insert signature on sender change
+  useEffect(() => {
+    // Only insert signature on fresh compose (no content yet)
+    if (!bodyHtml && editorRef.current) {
+      const sig = getSignatureForSender(sender)
+      editorRef.current.setContent(`<p></p><p></p>${sig.html}`)
+    }
+  }, []) // Only on mount
 
-  const applyTemplate = (tpl) => {
-    setSubject(tpl.subject)
-    setBody(tpl.body.replace('{{signature}}', ''))
-    if (tpl.default_account) setSender(tpl.default_account)
-    setShowTemplates(false)
-  }
+  // Autosave every 30 seconds
+  useEffect(() => {
+    const timer = setInterval(() => {
+      if (bodyHtml && to) {
+        handleSaveDraft(true)
+      }
+    }, 30000)
+    return () => clearInterval(timer)
+  }, [bodyHtml, to])
 
   const handleSend = async () => {
     if (!to.trim()) return
     setSending(true)
     try {
-      const res = await mail.compose({ sender, to: to.split(',').map(s => s.trim()), cc: cc ? cc.split(',').map(s => s.trim()) : [], subject, body, isDraft: false })
+      const htmlContent = editorRef.current?.getHTML() || bodyHtml
+      const res = await mail.compose({
+        sender,
+        to: to.split(',').map(s => s.trim()),
+        cc: cc ? cc.split(',').map(s => s.trim()) : [],
+        subject,
+        body: htmlContent,
+        isDraft: false,
+      })
       await mail.send(res.id)
       onSent()
     } catch { /* silent */ }
     setSending(false)
   }
 
-  const handleSaveDraft = async () => {
-    setSaving(true)
+  const handleSaveDraft = async (silent = false) => {
+    if (!silent) setSaving(true)
     try {
-      await mail.compose({ sender, to: to.split(',').map(s => s.trim()), cc: cc ? cc.split(',').map(s => s.trim()) : [], subject, body, isDraft: true })
+      const htmlContent = editorRef.current?.getHTML() || bodyHtml
+      await mail.compose({
+        sender,
+        to: to.split(',').map(s => s.trim()),
+        cc: cc ? cc.split(',').map(s => s.trim()) : [],
+        subject,
+        body: htmlContent,
+        isDraft: true,
+      })
+      setLastSaved(new Date())
     } catch { /* silent */ }
-    setSaving(false)
+    if (!silent) setSaving(false)
   }
 
   const handleAiDraft = async () => {
@@ -422,7 +442,10 @@ function ComposePanel({ onClose, onSent, templates, loadTemplates }) {
       const res = await mail.generate({ sender, to: to || undefined, purpose: aiPurpose, category: aiCategory, tone: 'professional' })
       if (res.data) {
         setSubject(res.data.subject || subject)
-        setBody(res.data.body || '')
+        const sig = getSignatureForSender(sender)
+        const content = (res.data.body || '').replace(/\n/g, '<br/>') + sig.html
+        editorRef.current?.setContent(content)
+        setBodyHtml(content)
       }
       setShowAiDraft(false)
       setAiPurpose('')
@@ -430,12 +453,47 @@ function ComposePanel({ onClose, onSent, templates, loadTemplates }) {
     setAiLoading(false)
   }
 
-  const handleAiRewrite = async (tone) => {
-    if (!body.trim()) return
+  const handleAIAction = async (action, selectedText) => {
     setAiLoading(true)
     try {
-      const res = await mail.rewrite({ body, tone, sender })
-      if (res.text) setBody(res.text)
+      let res
+      const text = selectedText || editorRef.current?.getText() || ''
+      switch (action) {
+        case 'improve':
+        case 'professional':
+        case 'friendly':
+        case 'formal':
+        case 'concise':
+          res = await mail.rewrite({ body: text, tone: action === 'improve' ? 'professional' : action, sender })
+          if (res.text) {
+            const html = res.text.replace(/\n/g, '<br/>')
+            editorRef.current?.setContent(html)
+          }
+          break
+        case 'shorten':
+          res = await mail.rewrite({ body: text, tone: 'concise', sender })
+          if (res.text) editorRef.current?.setContent(res.text.replace(/\n/g, '<br/>'))
+          break
+        case 'expand':
+          res = await mail.rewrite({ body: text, tone: 'detailed and thorough', sender })
+          if (res.text) editorRef.current?.setContent(res.text.replace(/\n/g, '<br/>'))
+          break
+        case 'grammar':
+          res = await mail.rewrite({ body: text, tone: 'grammatically correct', sender })
+          if (res.text) editorRef.current?.setContent(res.text.replace(/\n/g, '<br/>'))
+          break
+        case 'translate':
+          res = await mail.translate({ body: text, targetLang: 'Bosnian' })
+          if (res.text) editorRef.current?.setContent(res.text.replace(/\n/g, '<br/>'))
+          break
+        case 'personalize':
+        case 'conversion':
+          res = await mail.rewrite({ body: text, tone: action === 'personalize' ? 'personalized and specific' : 'conversion-optimized with strong CTA', sender })
+          if (res.text) editorRef.current?.setContent(res.text.replace(/\n/g, '<br/>'))
+          break
+        default:
+          break
+      }
     } catch { /* silent */ }
     setAiLoading(false)
   }
@@ -443,20 +501,24 @@ function ComposePanel({ onClose, onSent, templates, loadTemplates }) {
   const handleAiSubjects = async () => {
     setAiLoading(true)
     try {
-      const res = await mail.generateSubject({ body, purpose: subject || aiPurpose, category: aiCategory })
+      const text = editorRef.current?.getText() || ''
+      const res = await mail.generateSubject({ body: text, purpose: subject || aiPurpose, category: aiCategory })
       if (res.data?.subjects?.length) setSubject(res.data.subjects[0])
     } catch { /* silent */ }
     setAiLoading(false)
   }
 
-  const handleTranslate = async () => {
-    if (!body.trim()) return
-    setAiLoading(true)
-    try {
-      const res = await mail.translate({ body, targetLang: 'Bosnian' })
-      if (res.text) setBody(res.text)
-    } catch { /* silent */ }
-    setAiLoading(false)
+  const applyTemplate = (tpl) => {
+    setSubject(tpl.subject)
+    if (tpl.defaultSender) setSender(tpl.defaultSender)
+    const sig = getSignatureForSender(tpl.defaultSender || sender)
+    editorRef.current?.setContent(tpl.html + sig.html)
+    setShowTemplates(false)
+  }
+
+  const insertSignature = () => {
+    const sig = getSignatureForSender(sender)
+    editorRef.current?.insertContent(sig.html)
   }
 
   const senderProfile = SENDERS.find(s => s.key === sender) || SENDERS[2]
@@ -467,10 +529,13 @@ function ComposePanel({ onClose, onSent, templates, loadTemplates }) {
       <div className="px-4 py-3 border-b border-border flex items-center justify-between">
         <h2 className="text-[14px] font-semibold text-text-primary">New Message</h2>
         <div className="flex items-center gap-2">
-          <button onClick={() => setShowTemplates(!showTemplates)} className="flex items-center gap-1 px-2.5 py-1 rounded-md bg-elevated hover:bg-raised text-[11px] text-text-secondary" title="Templates">
+          <button onClick={() => setShowTemplates(!showTemplates)} className="flex items-center gap-1 px-2.5 py-1 rounded-md bg-elevated hover:bg-raised text-[11px] text-text-secondary">
             <LayoutTemplate size={13} /> Templates
           </button>
-          <button onClick={() => setShowAiDraft(!showAiDraft)} className="flex items-center gap-1 px-2.5 py-1 rounded-md bg-accent-muted hover:bg-accent/20 text-[11px] text-accent" title="AI Draft">
+          <button onClick={() => setShowPreview(!showPreview)} className="flex items-center gap-1 px-2.5 py-1 rounded-md bg-elevated hover:bg-raised text-[11px] text-text-secondary">
+            <Eye size={13} /> Preview
+          </button>
+          <button onClick={() => setShowAiDraft(!showAiDraft)} className="flex items-center gap-1 px-2.5 py-1 rounded-md bg-accent-muted hover:bg-accent/20 text-[11px] text-accent">
             <Sparkles size={13} /> AI Draft
           </button>
           <button onClick={onClose} className="p-1 rounded hover:bg-elevated text-text-tertiary"><X size={16} /></button>
@@ -479,13 +544,14 @@ function ComposePanel({ onClose, onSent, templates, loadTemplates }) {
 
       {/* Template picker */}
       {showTemplates && (
-        <div className="px-4 py-2 border-b border-border bg-elevated max-h-40 overflow-y-auto">
-          <p className="text-[10px] font-semibold text-text-tertiary uppercase mb-1.5">Select Template</p>
-          <div className="grid grid-cols-2 gap-1">
-            {templates.map(tpl => (
-              <button key={tpl.id} onClick={() => applyTemplate(tpl)} className="text-left px-2 py-1.5 rounded text-[11px] text-text-secondary hover:bg-raised hover:text-text-primary transition-colors">
-                <span className="font-medium">{tpl.name}</span>
-                <span className="text-text-tertiary ml-1">({tpl.category})</span>
+        <div className="px-4 py-3 border-b border-border bg-elevated max-h-48 overflow-y-auto">
+          <p className="text-[10px] font-semibold text-text-tertiary uppercase mb-2">Email Templates</p>
+          <div className="grid grid-cols-3 gap-1.5">
+            {EMAIL_TEMPLATES.map(tpl => (
+              <button key={tpl.id} onClick={() => applyTemplate(tpl)}
+                className="text-left px-2.5 py-2 rounded-md border border-border text-[11px] text-text-secondary hover:bg-raised hover:text-text-primary hover:border-accent/30 transition-colors">
+                <span className="font-medium block">{tpl.name}</span>
+                <span className="text-[9px] text-text-tertiary">{tpl.category}</span>
               </button>
             ))}
           </div>
@@ -518,75 +584,96 @@ function ComposePanel({ onClose, onSent, templates, loadTemplates }) {
         </div>
       )}
 
-      {/* Compose form */}
-      <div className="px-4 py-3 border-b border-border space-y-2">
-        {/* Sender */}
-        <div className="flex items-center gap-2">
-          <label className="text-[11px] text-text-tertiary w-12 shrink-0">From</label>
-          <SenderSelect value={sender} onChange={setSender} />
+      {/* Preview mode */}
+      {showPreview && (
+        <div className="flex-1 overflow-hidden border-b border-border">
+          <EmailPreview
+            html={editorRef.current?.getHTML() || bodyHtml}
+            plain={editorRef.current?.getText() || ''}
+            subject={subject}
+            senderName={senderProfile.displayName}
+          />
         </div>
+      )}
 
-        {/* To */}
-        <div className="flex items-center gap-2">
-          <label className="text-[11px] text-text-tertiary w-12 shrink-0">To</label>
-          <input value={to} onChange={e => setTo(e.target.value)} placeholder="recipient@example.com" className="flex-1 bg-elevated border border-border rounded-md px-2.5 py-1.5 text-[12px] text-text-primary placeholder:text-text-tertiary focus:border-accent focus:outline-none" />
-          {!showCc && <button onClick={() => setShowCc(true)} className="text-[10px] text-accent hover:underline">CC</button>}
-        </div>
-
-        {showCc && (
-          <div className="flex items-center gap-2">
-            <label className="text-[11px] text-text-tertiary w-12 shrink-0">CC</label>
-            <input value={cc} onChange={e => setCc(e.target.value)} placeholder="cc@example.com" className="flex-1 bg-elevated border border-border rounded-md px-2.5 py-1.5 text-[12px] text-text-primary placeholder:text-text-tertiary focus:border-accent focus:outline-none" />
+      {/* Compose form (hidden during preview) */}
+      {!showPreview && (
+        <>
+          {/* Address fields */}
+          <div className="px-4 py-3 border-b border-border space-y-2">
+            <div className="flex items-center gap-2">
+              <label className="text-[11px] text-text-tertiary w-12 shrink-0">From</label>
+              <SenderSelect value={sender} onChange={setSender} />
+            </div>
+            <div className="flex items-center gap-2">
+              <label className="text-[11px] text-text-tertiary w-12 shrink-0">To</label>
+              <input value={to} onChange={e => setTo(e.target.value)} placeholder="recipient@example.com" className="flex-1 bg-elevated border border-border rounded-md px-2.5 py-1.5 text-[12px] text-text-primary placeholder:text-text-tertiary focus:border-accent focus:outline-none" />
+              {!showCc && <button onClick={() => setShowCc(true)} className="text-[10px] text-accent hover:underline">CC</button>}
+            </div>
+            {showCc && (
+              <div className="flex items-center gap-2">
+                <label className="text-[11px] text-text-tertiary w-12 shrink-0">CC</label>
+                <input value={cc} onChange={e => setCc(e.target.value)} placeholder="cc@example.com" className="flex-1 bg-elevated border border-border rounded-md px-2.5 py-1.5 text-[12px] text-text-primary placeholder:text-text-tertiary focus:border-accent focus:outline-none" />
+              </div>
+            )}
+            <div className="flex items-center gap-2">
+              <label className="text-[11px] text-text-tertiary w-12 shrink-0">Subj</label>
+              <input value={subject} onChange={e => setSubject(e.target.value)} placeholder="Subject" className="flex-1 bg-elevated border border-border rounded-md px-2.5 py-1.5 text-[12px] text-text-primary placeholder:text-text-tertiary focus:border-accent focus:outline-none" />
+              <button onClick={handleAiSubjects} disabled={aiLoading} className="p-1.5 rounded hover:bg-elevated text-text-tertiary hover:text-accent" title="AI Subject Suggestions">
+                {aiLoading ? <Loader2 size={13} className="animate-spin" /> : <Sparkles size={13} />}
+              </button>
+            </div>
           </div>
-        )}
 
-        {/* Subject */}
-        <div className="flex items-center gap-2">
-          <label className="text-[11px] text-text-tertiary w-12 shrink-0">Subj</label>
-          <input value={subject} onChange={e => setSubject(e.target.value)} placeholder="Subject" className="flex-1 bg-elevated border border-border rounded-md px-2.5 py-1.5 text-[12px] text-text-primary placeholder:text-text-tertiary focus:border-accent focus:outline-none" />
-          <button onClick={handleAiSubjects} disabled={aiLoading} className="p-1.5 rounded hover:bg-elevated text-text-tertiary hover:text-accent" title="AI Subject Suggestions">
-            {aiLoading ? <Loader2 size={13} className="animate-spin" /> : <Sparkles size={13} />}
-          </button>
-        </div>
-      </div>
+          {/* Sender identity bar */}
+          <div className="px-4 py-1.5 border-b border-border bg-elevated/50 flex items-center gap-2">
+            <div className="w-2 h-2 rounded-full" style={{ background: senderProfile.color }} />
+            <span className="text-[10px] text-text-tertiary">Sending as <span className="text-text-secondary font-medium">{senderProfile.displayName}</span> ({senderProfile.email})</span>
+            {lastSaved && <span className="ml-auto text-[9px] text-text-tertiary">Saved {lastSaved.toLocaleTimeString()}</span>}
+          </div>
 
-      {/* Sender identity bar */}
-      <div className="px-4 py-1.5 border-b border-border bg-elevated/50 flex items-center gap-2">
-        <div className="w-2 h-2 rounded-full" style={{ background: senderProfile.color }} />
-        <span className="text-[10px] text-text-tertiary">Sending as <span className="text-text-secondary font-medium">{senderProfile.displayName}</span> ({senderProfile.email})</span>
-      </div>
+          {/* TipTap Editor */}
+          <div className="flex-1 overflow-hidden flex flex-col">
+            <TipTapEditor
+              ref={editorRef}
+              content={bodyHtml}
+              onChange={setBodyHtml}
+              onSave={() => handleSaveDraft(false)}
+              onSend={handleSend}
+              placeholder="Write your email..."
+              sender={sender}
+              onAIAction={handleAIAction}
+              className="flex-1"
+            />
+          </div>
+        </>
+      )}
 
-      {/* Body */}
-      <div className="flex-1 overflow-hidden flex flex-col">
-        <textarea
-          value={body}
-          onChange={e => setBody(e.target.value)}
-          placeholder="Write your message..."
-          className="flex-1 w-full px-4 py-3 bg-bg text-[13px] text-text-primary placeholder:text-text-tertiary focus:outline-none resize-none leading-relaxed"
-        />
-      </div>
-
-      {/* AI toolbar + send */}
+      {/* Bottom toolbar */}
       <div className="px-4 py-2.5 border-t border-border bg-surface flex items-center justify-between">
         <div className="flex items-center gap-1">
-          <button onClick={() => handleAiRewrite('professional')} disabled={aiLoading} className="flex items-center gap-1 px-2 py-1 rounded text-[10px] text-text-tertiary hover:text-text-secondary hover:bg-elevated" title="Rewrite Professional">
+          <button onClick={() => handleAIAction('professional')} disabled={aiLoading} className="flex items-center gap-1 px-2 py-1 rounded text-[10px] text-text-tertiary hover:text-text-secondary hover:bg-elevated">
             <Wand2 size={11} /> Professional
           </button>
-          <button onClick={() => handleAiRewrite('friendly')} disabled={aiLoading} className="flex items-center gap-1 px-2 py-1 rounded text-[10px] text-text-tertiary hover:text-text-secondary hover:bg-elevated" title="Rewrite Friendly">
+          <button onClick={() => handleAIAction('friendly')} disabled={aiLoading} className="flex items-center gap-1 px-2 py-1 rounded text-[10px] text-text-tertiary hover:text-text-secondary hover:bg-elevated">
             <Wand2 size={11} /> Friendly
           </button>
-          <button onClick={() => handleAiRewrite('concise')} disabled={aiLoading} className="flex items-center gap-1 px-2 py-1 rounded text-[10px] text-text-tertiary hover:text-text-secondary hover:bg-elevated" title="Rewrite Concise">
-            <Wand2 size={11} /> Concise
+          <button onClick={() => handleAIAction('shorten')} disabled={aiLoading} className="flex items-center gap-1 px-2 py-1 rounded text-[10px] text-text-tertiary hover:text-text-secondary hover:bg-elevated">
+            <Wand2 size={11} /> Shorten
           </button>
           <div className="w-px h-4 bg-border mx-1" />
-          <button onClick={handleTranslate} disabled={aiLoading} className="flex items-center gap-1 px-2 py-1 rounded text-[10px] text-text-tertiary hover:text-text-secondary hover:bg-elevated" title="Translate to Bosnian">
+          <button onClick={() => handleAIAction('translate')} disabled={aiLoading} className="flex items-center gap-1 px-2 py-1 rounded text-[10px] text-text-tertiary hover:text-text-secondary hover:bg-elevated">
             <Languages size={11} /> Bosnian
+          </button>
+          <div className="w-px h-4 bg-border mx-1" />
+          <button onClick={insertSignature} className="flex items-center gap-1 px-2 py-1 rounded text-[10px] text-text-tertiary hover:text-text-secondary hover:bg-elevated">
+            <FileText size={11} /> Signature
           </button>
           {aiLoading && <Loader2 size={12} className="animate-spin text-accent ml-1" />}
         </div>
 
         <div className="flex items-center gap-2">
-          <button onClick={handleSaveDraft} disabled={saving} className="flex items-center gap-1 px-3 py-1.5 bg-elevated hover:bg-raised text-text-secondary rounded-md text-[12px] font-medium transition-colors">
+          <button onClick={() => handleSaveDraft(false)} disabled={saving} className="flex items-center gap-1 px-3 py-1.5 bg-elevated hover:bg-raised text-text-secondary rounded-md text-[12px] font-medium transition-colors">
             {saving ? <Loader2 size={12} className="animate-spin" /> : <FileEdit size={12} />} Draft
           </button>
           <button onClick={handleSend} disabled={sending || !to} className="flex items-center gap-1 px-4 py-1.5 bg-accent hover:bg-accent-hover text-white rounded-md text-[12px] font-medium transition-colors disabled:opacity-50">
@@ -598,16 +685,15 @@ function ComposePanel({ onClose, onSent, templates, loadTemplates }) {
   )
 }
 
-// ═══════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════════
 //  AI ASSISTANT PANEL
-// ═══════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════════
 
 function AIPanel({ message, onClose }) {
   const [activeTab, setActiveTab] = useState('actions')
   const [loading, setLoading] = useState(false)
   const [result, setResult] = useState(null)
 
-  // Quick AI actions
   const actions = [
     { label: 'Summarize Thread', icon: Brain, action: 'summarize' },
     { label: 'Suggest Replies', icon: MessageSquare, action: 'suggest-reply' },
@@ -671,7 +757,6 @@ function AIPanel({ message, onClose }) {
         <button onClick={onClose} className="p-1 rounded hover:bg-elevated text-text-tertiary"><X size={14} /></button>
       </div>
 
-      {/* Tabs */}
       <div className="flex border-b border-border">
         {['actions', 'billing'].map(tab => (
           <button key={tab} onClick={() => { setActiveTab(tab); setResult(null) }}
@@ -682,7 +767,6 @@ function AIPanel({ message, onClose }) {
         ))}
       </div>
 
-      {/* Actions */}
       <div className="flex-1 overflow-y-auto p-2 space-y-1">
         {(activeTab === 'actions' ? actions : billingActions).map(a => (
           <button key={a.action} onClick={() => runAction(a.action)} disabled={loading}
@@ -693,19 +777,15 @@ function AIPanel({ message, onClose }) {
           </button>
         ))}
 
-        {/* Loading */}
         {loading && (
           <div className="flex items-center justify-center py-6 text-accent">
             <Loader2 size={18} className="animate-spin" />
           </div>
         )}
 
-        {/* Result display */}
         {result && !loading && (
           <div className="mt-3 p-2.5 bg-elevated rounded-lg">
-            {result.type === 'error' && (
-              <p className="text-[11px] text-error">{result.data}</p>
-            )}
+            {result.type === 'error' && <p className="text-[11px] text-error">{result.data}</p>}
             {result.type === 'summary' && result.data && (
               <div className="space-y-2">
                 <p className="text-[11px] text-text-primary leading-relaxed">{result.data.summary}</p>
@@ -745,12 +825,8 @@ function AIPanel({ message, onClose }) {
                 <p className="text-[11px] text-text-secondary leading-relaxed whitespace-pre-wrap">{result.data.body?.slice(0, 300)}...</p>
               </div>
             )}
-            {result.type === 'text' && (
-              <p className="text-[11px] text-text-secondary leading-relaxed whitespace-pre-wrap">{result.data}</p>
-            )}
-            {result.type === 'form' && (
-              <BillingForm formType={result.formType} onGenerated={(data) => setResult({ type: 'email', data })} />
-            )}
+            {result.type === 'text' && <p className="text-[11px] text-text-secondary leading-relaxed whitespace-pre-wrap">{result.data}</p>}
+            {result.type === 'form' && <BillingForm formType={result.formType} onGenerated={(data) => setResult({ type: 'email', data })} />}
           </div>
         )}
       </div>
@@ -758,9 +834,9 @@ function AIPanel({ message, onClose }) {
   )
 }
 
-// ═══════════════════════════════════════════
-//  BILLING FORM (inside AI panel)
-// ═══════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════════
+//  BILLING FORM
+// ═══════════════════════════════════════════════════════════════
 
 function BillingForm({ formType, onGenerated }) {
   const [clientName, setClientName] = useState('')
@@ -808,9 +884,9 @@ function BillingForm({ formType, onGenerated }) {
   )
 }
 
-// ═══════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════════
 //  SENDER SELECT
-// ═══════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════════
 
 function SenderSelect({ value, onChange, compact }) {
   const [open, setOpen] = useState(false)
@@ -847,9 +923,9 @@ function SenderSelect({ value, onChange, compact }) {
   )
 }
 
-// ═══════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════════
 //  HELPERS
-// ═══════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════════
 
 function formatDate(iso) {
   if (!iso) return ''
