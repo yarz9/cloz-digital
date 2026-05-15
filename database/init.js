@@ -357,6 +357,12 @@ export async function initDatabase() {
     ['followup_1', "TEXT DEFAULT ''"],
     ['followup_2', "TEXT DEFAULT ''"],
     ['followup_3', "TEXT DEFAULT ''"],
+    // Phase 4: real-data verification (OSM/Google discovery + synthetic flag)
+    ['source', "TEXT DEFAULT ''"],
+    ['verified', 'INTEGER DEFAULT 0'],
+    ['synthetic', 'INTEGER DEFAULT 0'],
+    ['osm_id', "TEXT DEFAULT ''"],
+    ['osm_type', "TEXT DEFAULT ''"],
   ];
   for (const [col, typedef] of migrations) {
     try {
@@ -364,6 +370,18 @@ export async function initDatabase() {
     } catch {
       // Column already exists — ignore
     }
+  }
+
+  // ── One-time data migration: mark legacy AI-generated leads as synthetic ──
+  // Any pre-existing lead without a populated `source` column was created before
+  // OSM integration and is therefore AI-generated. Mark it synthetic so it's
+  // hidden by default. Idempotent: only affects rows where source is blank.
+  try {
+    rawDb.run(`UPDATE client_scout_leads
+      SET synthetic = 1, verified = 0
+      WHERE (source IS NULL OR source = '') AND synthetic = 0`);
+  } catch {
+    // Table may not exist on a fresh install — that's fine
   }
 
   // Save initial state
