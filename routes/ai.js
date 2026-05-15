@@ -176,6 +176,171 @@ Respond with a JSON object containing: headline, subline, body, cta, caption, ha
 });
 
 // ═══════════════════════════════════════════════════════
+// 4b. CONTENT STUDIO — Premium AI tools for design studio
+// ═══════════════════════════════════════════════════════
+
+router.post('/content-rewrite', async (req, res) => {
+  const { text, tone, context } = req.body;
+  if (!text) return res.status(400).json({ error: 'text required' });
+  try {
+    const provider = getActiveProvider();
+    const prompt = `Rewrite the following content in a "${tone || 'professional'}" tone.
+${context ? `Context: ${context}` : ''}
+
+Original:
+${text}
+
+Rules:
+- Keep the same meaning
+- Adapt the tone naturally
+- Be concise and impactful
+- Output ONLY the rewritten text, no preamble`;
+    const result = await provider.generate(prompt, { ...getConfig(), temperature: 0.6, task: 'content-generate' });
+    res.json(result);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+router.post('/content-headlines', async (req, res) => {
+  const { topic, count = 5, tone } = req.body;
+  if (!topic) return res.status(400).json({ error: 'topic required' });
+  try {
+    const provider = getActiveProvider();
+    const schema = {
+      type: 'object',
+      properties: {
+        headlines: { type: 'array', items: { type: 'string' } },
+      },
+      required: ['headlines'],
+    };
+    const prompt = `Generate ${count} powerful, conversion-focused headlines for: "${topic}".
+Tone: ${tone || 'premium and confident'}
+Rules: 6-12 words each, no clichés, hook the reader, no quotation marks.`;
+    const result = await provider.generateStructured(prompt, schema, { ...getConfig(), temperature: 0.8, task: 'content-generate' });
+    res.json(result);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+router.post('/content-variants', async (req, res) => {
+  const { content, count = 3 } = req.body;
+  if (!content) return res.status(400).json({ error: 'content required' });
+  try {
+    const provider = getActiveProvider();
+    const schema = {
+      type: 'object',
+      properties: {
+        variants: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: {
+              headline: { type: 'string' },
+              subline: { type: 'string' },
+              body: { type: 'string' },
+              cta: { type: 'string' },
+            },
+            required: ['headline', 'cta'],
+          },
+        },
+      },
+      required: ['variants'],
+    };
+    const prompt = `Given this content piece, create ${count} distinct variants — different angles, hooks, and styles. Same core message, totally different execution.
+
+Source:
+Headline: ${content.headline || ''}
+Subline: ${content.subline || ''}
+Body: ${content.body || ''}
+CTA: ${content.cta || ''}
+
+Each variant must feel like a different copywriter wrote it.`;
+    const result = await provider.generateStructured(prompt, schema, { ...getConfig(), temperature: 0.85, task: 'content-generate' });
+    res.json(result);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+router.post('/content-critique', async (req, res) => {
+  const { content, format } = req.body;
+  if (!content) return res.status(400).json({ error: 'content required' });
+  try {
+    const provider = getActiveProvider();
+    const schema = {
+      type: 'object',
+      properties: {
+        overallScore: { type: 'number', description: '0-100' },
+        clarity: { type: 'number' },
+        impact: { type: 'number' },
+        ctaStrength: { type: 'number' },
+        readability: { type: 'number' },
+        visualBalance: { type: 'number' },
+        strengths: { type: 'array', items: { type: 'string' } },
+        weaknesses: { type: 'array', items: { type: 'string' } },
+        suggestions: { type: 'array', items: { type: 'string' } },
+        verdict: { type: 'string' },
+      },
+      required: ['overallScore', 'strengths', 'weaknesses', 'suggestions', 'verdict'],
+    };
+    const prompt = `You are a senior creative director reviewing a social media post.
+
+Format: ${format || 'Instagram square'}
+Headline: ${content.headline || '—'}
+Subline: ${content.subline || '—'}
+Body: ${content.body || '—'}
+CTA: ${content.cta || '—'}
+
+Score 0-100 on: clarity, impact, CTA strength, readability, visual balance.
+List 3-5 strengths, 3-5 weaknesses, 3-5 specific actionable suggestions.
+End with a 1-2 sentence verdict.`;
+    const result = await provider.generateStructured(prompt, schema, { ...getConfig(), temperature: 0.4, task: 'content-generate' });
+    res.json(result);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+router.post('/content-carousel', async (req, res) => {
+  const { topic, slides = 5, brief } = req.body;
+  if (!topic) return res.status(400).json({ error: 'topic required' });
+  try {
+    const provider = getActiveProvider();
+    const schema = {
+      type: 'object',
+      properties: {
+        slides: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: {
+              headline: { type: 'string' },
+              subline: { type: 'string' },
+              body: { type: 'string' },
+              cta: { type: 'string' },
+              role: { type: 'string', description: 'hook, value, proof, cta, etc.' },
+            },
+            required: ['headline', 'role'],
+          },
+        },
+        caption: { type: 'string' },
+        hashtags: { type: 'string' },
+      },
+      required: ['slides', 'caption', 'hashtags'],
+    };
+    const prompt = `Create a ${slides}-slide Instagram carousel for a premium web design agency.
+
+Topic: ${topic}
+${brief ? `Brief: ${brief}` : ''}
+
+Structure:
+- Slide 1: Strong hook
+- Middle slides: Build value, educate, prove
+- Final slide: Clear CTA
+
+Each slide: punchy headline, optional subline, short body (1-2 lines), CTA where appropriate.
+Caption: 2-3 short paragraphs.
+Hashtags: 10-15 relevant tags.`;
+    const result = await provider.generateStructured(prompt, schema, { ...getConfig(), temperature: 0.75, task: 'content-generate' });
+    res.json(result);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// ═══════════════════════════════════════════════════════
 // 5. INVOICE EXPLANATION — Model Group: FAST
 // ═══════════════════════════════════════════════════════
 router.post('/invoice-explanation', async (req, res) => {

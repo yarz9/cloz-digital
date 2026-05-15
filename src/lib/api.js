@@ -28,6 +28,21 @@ export const ai = {
   /** Generate Instagram content */
   contentGenerate: (data) => post('/content-generate', data),
 
+  /** Rewrite content in a different tone */
+  contentRewrite: (data) => post('/content-rewrite', data),
+
+  /** Generate headline variants */
+  contentHeadlines: (data) => post('/content-headlines', data),
+
+  /** Generate full content variants */
+  contentVariants: (data) => post('/content-variants', data),
+
+  /** AI design critique */
+  contentCritique: (data) => post('/content-critique', data),
+
+  /** Generate multi-slide carousel */
+  contentCarousel: (data) => post('/content-carousel', data),
+
   /** Explain an invoice */
   invoiceExplanation: (data) => post('/invoice-explanation', data),
 
