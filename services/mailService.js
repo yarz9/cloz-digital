@@ -201,49 +201,74 @@ export async function syncImapMessages(account, options = {}) {
 //  SMTP Service
 // ══════════════════════════════════════════════════════════════
 
+const SMTP_TIMEOUT = 15000; // 15 seconds
+
 /**
  * Build nodemailer transporter from account record.
  */
 function buildSmtpTransport(account) {
   const password = decrypt(account.smtp_password_encrypted);
-  const secure = account.smtp_encryption === 'ssl_tls';
-  return nodemailer.createTransport({
+  const port = account.smtp_port || 465;
+  // Port 465 = implicit TLS (secure: true)
+  // Port 587 = STARTTLS (secure: false, nodemailer upgrades automatically)
+  // Explicit encryption setting overrides, but port-based default is safest
+  const secure = account.smtp_encryption === 'starttls' ? false
+    : account.smtp_encryption === 'none' ? false
+    : (port === 465 ? true : account.smtp_encryption === 'ssl_tls');
+
+  const config = {
     host: account.smtp_host,
-    port: account.smtp_port || (secure ? 465 : 587),
+    port,
     secure,
     auth: {
       user: account.smtp_username || account.email,
       pass: password,
     },
+    connectionTimeout: SMTP_TIMEOUT,
+    greetingTimeout: SMTP_TIMEOUT,
+    socketTimeout: SMTP_TIMEOUT,
     tls: {
       rejectUnauthorized: false,
     },
-  });
+  };
+
+  console.log(`[SMTP] Transport config: host=${config.host}, port=${config.port}, secure=${config.secure}, user=${config.auth.user}, timeouts=${SMTP_TIMEOUT}ms`);
+  return nodemailer.createTransport(config);
 }
 
 /**
  * Test SMTP connection. Returns { success, message }.
  */
 export async function testSmtpConnection(account) {
-  if (!account.smtp_host || !decrypt(account.smtp_password_encrypted)) {
-    return { success: false, message: 'SMTP host and password are required' };
+  const password = decrypt(account.smtp_password_encrypted);
+  if (!account.smtp_host) {
+    return { success: false, message: 'SMTP host is required', code: 'NO_HOST' };
+  }
+  if (!password) {
+    return { success: false, message: 'SMTP password is required', code: 'NO_PASS' };
   }
 
+  let transporter;
   try {
-    const transporter = buildSmtpTransport(account);
+    console.log(`[SMTP Test] Starting verify for ${account.email} → ${account.smtp_host}:${account.smtp_port}`);
+    transporter = buildSmtpTransport(account);
     await transporter.verify();
-    transporter.close();
+    console.log(`[SMTP Test] Verify succeeded for ${account.email}`);
     return {
       success: true,
       message: 'SMTP connection verified successfully.',
       details: { host: account.smtp_host, port: account.smtp_port },
     };
   } catch (err) {
+    console.error(`[SMTP Test] Verify failed for ${account.email}: code=${err.code} message=${err.message}`);
     return {
       success: false,
       message: `SMTP connection failed: ${err.message}`,
-      details: { error: err.code || err.message, host: account.smtp_host, port: account.smtp_port },
+      code: err.code || 'UNKNOWN',
+      details: { error: err.message, code: err.code, host: account.smtp_host, port: account.smtp_port },
     };
+  } finally {
+    try { transporter?.close(); } catch {}
   }
 }
 
@@ -251,32 +276,43 @@ export async function testSmtpConnection(account) {
  * Send an email via SMTP using account credentials.
  */
 export async function sendEmail(account, { to, cc, bcc, subject, text, html, replyTo }) {
-  const transporter = buildSmtpTransport(account);
+  let transporter;
+  try {
+    transporter = buildSmtpTransport(account);
 
-  const info = await transporter.sendMail({
-    from: `"${account.display_name}" <${account.email}>`,
-    to: Array.isArray(to) ? to.join(', ') : to,
-    cc: cc ? (Array.isArray(cc) ? cc.join(', ') : cc) : undefined,
-    bcc: bcc ? (Array.isArray(bcc) ? bcc.join(', ') : bcc) : undefined,
-    subject,
-    text: text || html?.replace(/<[^>]+>/g, '') || '',
-    html: html || text || '',
-    inReplyTo: replyTo || undefined,
-  });
+    const info = await transporter.sendMail({
+      from: `"${account.display_name}" <${account.email}>`,
+      to: Array.isArray(to) ? to.join(', ') : to,
+      cc: cc ? (Array.isArray(cc) ? cc.join(', ') : cc) : undefined,
+      bcc: bcc ? (Array.isArray(bcc) ? bcc.join(', ') : bcc) : undefined,
+      subject,
+      text: text || html?.replace(/<[^>]+>/g, '') || '',
+      html: html || text || '',
+      inReplyTo: replyTo || undefined,
+    });
 
-  transporter.close();
-  return info;
+    console.log(`[SMTP] Email sent: ${subject} → ${to} (messageId: ${info.messageId})`);
+    return info;
+  } finally {
+    try { transporter?.close(); } catch {}
+  }
 }
 
 /**
  * Send a test email from the given account.
  */
 export async function sendTestEmail(account) {
-  if (!account.smtp_host || !decrypt(account.smtp_password_encrypted)) {
-    return { success: false, message: 'SMTP not configured' };
+  const password = decrypt(account.smtp_password_encrypted);
+  if (!account.smtp_host) {
+    return { success: false, message: 'SMTP host is not configured', code: 'NO_HOST' };
+  }
+  if (!password) {
+    return { success: false, message: 'SMTP password is not configured', code: 'NO_PASS' };
   }
 
   try {
+    console.log(`[SMTP Test Email] Sending test to ${account.email} via ${account.smtp_host}:${account.smtp_port}`);
+
     const info = await sendEmail(account, {
       to: account.email,
       subject: `Cloz Digital — SMTP Test (${new Date().toLocaleTimeString()})`,
@@ -298,16 +334,19 @@ export async function sendTestEmail(account) {
     const db = getDb();
     db.prepare('UPDATE mail_accounts SET last_smtp_test_at = datetime("now") WHERE id = ?').run(account.id);
 
+    console.log(`[SMTP Test Email] Success for ${account.email}: messageId=${info.messageId}`);
     return {
       success: true,
       message: `Test email sent to ${account.email}`,
       details: { messageId: info.messageId, response: info.response },
     };
   } catch (err) {
+    console.error(`[SMTP Test Email] Failed for ${account.email}: code=${err.code} message=${err.message}`);
     return {
       success: false,
       message: `Failed to send test email: ${err.message}`,
-      details: { error: err.code || err.message },
+      code: err.code || 'UNKNOWN',
+      details: { error: err.message, code: err.code },
     };
   }
 }

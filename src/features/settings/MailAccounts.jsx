@@ -9,14 +9,26 @@ import {
 const API = '/api/mail/accounts'
 
 async function api(endpoint, opts = {}) {
-  const res = await fetch(`${API}${endpoint}`, {
-    method: opts.method || 'GET',
-    headers: opts.body ? { 'Content-Type': 'application/json' } : {},
-    body: opts.body ? JSON.stringify(opts.body) : undefined,
-  })
-  const data = await res.json()
-  if (!res.ok) throw new Error(data.error || 'Request failed')
-  return data
+  const timeout = opts.timeout || 30000
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), timeout)
+
+  try {
+    const res = await fetch(`${API}${endpoint}`, {
+      method: opts.method || 'GET',
+      headers: opts.body ? { 'Content-Type': 'application/json' } : {},
+      body: opts.body ? JSON.stringify(opts.body) : undefined,
+      signal: controller.signal,
+    })
+    const data = await res.json()
+    if (!res.ok) throw new Error(data.error || data.message || 'Request failed')
+    return data
+  } catch (e) {
+    if (e.name === 'AbortError') throw new Error(`Request timed out after ${timeout / 1000}s`)
+    throw e
+  } finally {
+    clearTimeout(timer)
+  }
 }
 
 // ══════════════════════════════════════════════════════════════
@@ -161,10 +173,12 @@ function AccountCard({ account, isEditing, onEdit, onUpdate, onToast, presets })
       onToast(result.message, result.success ? 'success' : 'error')
       if (action === 'sync') onUpdate()
     } catch (e) {
-      setTestResult({ success: false, message: e.message, action })
-      onToast(e.message, 'error')
+      const msg = e.message || `${label} failed`
+      setTestResult({ success: false, message: msg, action })
+      onToast(msg, 'error')
+    } finally {
+      setTesting(null)
     }
-    setTesting(null)
   }
 
   const deleteAccount = async () => {

@@ -298,18 +298,23 @@ router.delete('/:id', (req, res) => {
 // ══════════════════════════════════════════════════════════════
 
 router.post('/:id/test-imap', async (req, res) => {
-  const db = getDb();
-  const account = db.prepare('SELECT * FROM mail_accounts WHERE id = ?').get(req.params.id);
-  if (!account) return res.status(404).json({ error: 'Account not found' });
+  try {
+    const db = getDb();
+    const account = db.prepare('SELECT * FROM mail_accounts WHERE id = ?').get(req.params.id);
+    if (!account) return res.status(404).json({ error: 'Account not found' });
 
-  const result = await testImapConnection(account);
+    const result = await testImapConnection(account);
 
-  if (result.success) {
-    db.prepare('UPDATE mail_accounts SET last_imap_test_at = datetime("now") WHERE id = ?').run(req.params.id);
+    if (result.success) {
+      db.prepare('UPDATE mail_accounts SET last_imap_test_at = datetime("now") WHERE id = ?').run(req.params.id);
+    }
+
+    addLog(result.success ? 'info' : 'warning', `IMAP test ${result.success ? 'passed' : 'failed'} for ${account.email}: ${result.message}`);
+    res.json(result);
+  } catch (err) {
+    console.error(`[IMAP Test Route] Unhandled error: ${err.message}`);
+    res.status(500).json({ success: false, message: `IMAP test error: ${err.message}`, code: err.code || 'UNKNOWN' });
   }
-
-  addLog(result.success ? 'info' : 'warning', `IMAP test ${result.success ? 'passed' : 'failed'} for ${account.email}: ${result.message}`);
-  res.json(result);
 });
 
 
@@ -318,18 +323,23 @@ router.post('/:id/test-imap', async (req, res) => {
 // ══════════════════════════════════════════════════════════════
 
 router.post('/:id/test-smtp', async (req, res) => {
-  const db = getDb();
-  const account = db.prepare('SELECT * FROM mail_accounts WHERE id = ?').get(req.params.id);
-  if (!account) return res.status(404).json({ error: 'Account not found' });
+  try {
+    const db = getDb();
+    const account = db.prepare('SELECT * FROM mail_accounts WHERE id = ?').get(req.params.id);
+    if (!account) return res.status(404).json({ error: 'Account not found' });
 
-  const result = await testSmtpConnection(account);
+    const result = await testSmtpConnection(account);
 
-  if (result.success) {
-    db.prepare('UPDATE mail_accounts SET last_smtp_test_at = datetime("now") WHERE id = ?').run(req.params.id);
+    if (result.success) {
+      db.prepare('UPDATE mail_accounts SET last_smtp_test_at = datetime("now") WHERE id = ?').run(req.params.id);
+    }
+
+    addLog(result.success ? 'info' : 'warning', `SMTP test ${result.success ? 'passed' : 'failed'} for ${account.email}: ${result.message}`);
+    res.json(result);
+  } catch (err) {
+    console.error(`[SMTP Test Route] Unhandled error: ${err.message}`);
+    res.status(500).json({ success: false, message: `SMTP test error: ${err.message}`, code: err.code || 'UNKNOWN' });
   }
-
-  addLog(result.success ? 'info' : 'warning', `SMTP test ${result.success ? 'passed' : 'failed'} for ${account.email}: ${result.message}`);
-  res.json(result);
 });
 
 
@@ -338,13 +348,18 @@ router.post('/:id/test-smtp', async (req, res) => {
 // ══════════════════════════════════════════════════════════════
 
 router.post('/:id/send-test', async (req, res) => {
-  const db = getDb();
-  const account = db.prepare('SELECT * FROM mail_accounts WHERE id = ?').get(req.params.id);
-  if (!account) return res.status(404).json({ error: 'Account not found' });
+  try {
+    const db = getDb();
+    const account = db.prepare('SELECT * FROM mail_accounts WHERE id = ?').get(req.params.id);
+    if (!account) return res.status(404).json({ error: 'Account not found' });
 
-  const result = await sendTestEmail(account);
-  addLog(result.success ? 'info' : 'warning', `Test email ${result.success ? 'sent' : 'failed'} for ${account.email}`);
-  res.json(result);
+    const result = await sendTestEmail(account);
+    addLog(result.success ? 'info' : 'warning', `Test email ${result.success ? 'sent' : 'failed'} for ${account.email}`);
+    res.json(result);
+  } catch (err) {
+    console.error(`[Send Test Route] Unhandled error: ${err.message}`);
+    res.status(500).json({ success: false, message: `Send test error: ${err.message}`, code: err.code || 'UNKNOWN' });
+  }
 });
 
 
@@ -353,13 +368,18 @@ router.post('/:id/send-test', async (req, res) => {
 // ══════════════════════════════════════════════════════════════
 
 router.post('/:id/sync', async (req, res) => {
-  const db = getDb();
-  const account = db.prepare('SELECT * FROM mail_accounts WHERE id = ?').get(req.params.id);
-  if (!account) return res.status(404).json({ error: 'Account not found' });
+  try {
+    const db = getDb();
+    const account = db.prepare('SELECT * FROM mail_accounts WHERE id = ?').get(req.params.id);
+    if (!account) return res.status(404).json({ error: 'Account not found' });
 
-  const result = await syncImapMessages(account, { maxMessages: 100 });
-  addLog(result.success ? 'info' : 'warning', `Mail sync for ${account.email}: ${result.message}`);
-  res.json(result);
+    const result = await syncImapMessages(account, { maxMessages: 100 });
+    addLog(result.success ? 'info' : 'warning', `Mail sync for ${account.email}: ${result.message}`);
+    res.json(result);
+  } catch (err) {
+    console.error(`[Sync Route] Unhandled error: ${err.message}`);
+    res.status(500).json({ success: false, message: `Sync error: ${err.message}`, code: err.code || 'UNKNOWN' });
+  }
 });
 
 
