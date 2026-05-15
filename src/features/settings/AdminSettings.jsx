@@ -13,7 +13,7 @@ export default function AdminSettings() {
         <h2 className="text-[14px] font-semibold flex items-center gap-2 mb-4"><User size={15} className="text-accent" /> Business Profile</h2>
         <div className="space-y-3">
           <div><label className="text-[11px] text-text-tertiary block mb-1">Business Name</label><input defaultValue="Cloz Digital" className="w-full bg-elevated border border-border rounded-md px-3 py-2 text-[13px] focus:border-accent focus:outline-none" /></div>
-          <div><label className="text-[11px] text-text-tertiary block mb-1">Email</label><input defaultValue="hello@clozdigital.com" className="w-full bg-elevated border border-border rounded-md px-3 py-2 text-[13px] focus:border-accent focus:outline-none" /></div>
+          <div><label className="text-[11px] text-text-tertiary block mb-1">Email</label><input defaultValue="general@cloz.digital" className="w-full bg-elevated border border-border rounded-md px-3 py-2 text-[13px] focus:border-accent focus:outline-none" /></div>
           <div><label className="text-[11px] text-text-tertiary block mb-1">Location</label><input defaultValue="Bosnia and Herzegovina" className="w-full bg-elevated border border-border rounded-md px-3 py-2 text-[13px] focus:border-accent focus:outline-none" /></div>
           <div><label className="text-[11px] text-text-tertiary block mb-1">Currency</label><input defaultValue="BAM" className="w-full bg-elevated border border-border rounded-md px-3 py-2 text-[13px] focus:border-accent focus:outline-none" /></div>
         </div>

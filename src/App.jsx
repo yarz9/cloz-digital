@@ -55,6 +55,7 @@ import AILogs from './features/ai/AILogs'
 import AIHealth from './features/ai/AIHealth'
 import AISettings from './features/ai/AISettings'
 import AuditLab from './features/audit/AuditLab'
+import Mail from './features/mail/Mail'
 
 export default function App() {
   return (
@@ -78,6 +79,7 @@ export default function App() {
         <Route path="pipeline" element={<Pipeline />} />
         <Route path="proposals" element={<Proposals />} />
         <Route path="outreach" element={<Outreach />} />
+        <Route path="mail" element={<Mail />} />
         <Route path="status" element={<Status />} />
         <Route path="hosting" element={<Hosting />} />
         <Route path="maintenance" element={<Maintenance />} />
@@ -104,6 +106,9 @@ export default function App() {
         <Route path="proposals" element={<Proposals />} />
         <Route path="outreach" element={<Outreach />} />
         <Route path="competitor" element={<CompetitorIntel />} />
+
+        {/* Mail */}
+        <Route path="mail" element={<Mail />} />
 
         {/* Client Management */}
         <Route path="clients" element={<Clients />} />

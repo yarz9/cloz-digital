@@ -2,7 +2,7 @@ import { Outlet, NavLink, useLocation } from 'react-router-dom'
 import {
   LayoutDashboard, Search, Users, Receipt, Globe, Server,
   Wrench, Palette, FileText, BookOpen, BarChart3, Settings, Command,
-  Send, GitBranch, CheckSquare, FileBarChart, Target, Building2
+  Send, GitBranch, CheckSquare, FileBarChart, Target, Building2, Mail
 } from 'lucide-react'
 
 const nav = [
@@ -13,6 +13,7 @@ const nav = [
   { to: '/admin/clients', icon: Users, label: 'Clients' },
   { to: '/admin/proposals', icon: FileText, label: 'Proposals' },
   { to: '/admin/outreach', icon: Send, label: 'Outreach' },
+  { to: '/admin/mail', icon: Mail, label: 'Mail' },
   { to: '/admin/billing', icon: Receipt, label: 'Billing' },
 ]
 

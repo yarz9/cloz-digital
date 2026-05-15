@@ -15,7 +15,7 @@ export default function ContactPage() {
                 <Mail size={18} className="text-accent mt-0.5" />
                 <div>
                   <h3 className="text-[14px] font-medium">Email</h3>
-                  <p className="text-[13px] text-text-secondary">hello@clozdigital.com</p>
+                  <p className="text-[13px] text-text-secondary">general@cloz.digital</p>
                 </div>
               </div>
               <div className="flex items-start gap-3">

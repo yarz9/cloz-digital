@@ -208,6 +208,98 @@ export async function initDatabase() {
     );
   `);
 
+  // ── Mail System Tables ──
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS mail_accounts (
+      id TEXT PRIMARY KEY,
+      key TEXT UNIQUE NOT NULL,
+      display_name TEXT NOT NULL,
+      email TEXT UNIQUE NOT NULL,
+      title TEXT DEFAULT '',
+      signature TEXT DEFAULT '',
+      imap_host TEXT DEFAULT '',
+      imap_port INTEGER DEFAULT 993,
+      imap_user TEXT DEFAULT '',
+      imap_pass TEXT DEFAULT '',
+      smtp_host TEXT DEFAULT '',
+      smtp_port INTEGER DEFAULT 587,
+      smtp_user TEXT DEFAULT '',
+      smtp_pass TEXT DEFAULT '',
+      is_active INTEGER DEFAULT 1,
+      created_at TEXT DEFAULT (datetime('now'))
+    );
+
+    CREATE TABLE IF NOT EXISTS mail_messages (
+      id TEXT PRIMARY KEY,
+      account_id TEXT NOT NULL,
+      thread_id TEXT DEFAULT '',
+      folder TEXT DEFAULT 'inbox',
+      from_name TEXT DEFAULT '',
+      from_email TEXT DEFAULT '',
+      to_emails TEXT DEFAULT '[]',
+      cc_emails TEXT DEFAULT '[]',
+      bcc_emails TEXT DEFAULT '[]',
+      subject TEXT DEFAULT '',
+      body_text TEXT DEFAULT '',
+      body_html TEXT DEFAULT '',
+      snippet TEXT DEFAULT '',
+      labels TEXT DEFAULT '[]',
+      is_read INTEGER DEFAULT 0,
+      is_starred INTEGER DEFAULT 0,
+      is_draft INTEGER DEFAULT 0,
+      is_sent INTEGER DEFAULT 0,
+      has_attachments INTEGER DEFAULT 0,
+      attachments TEXT DEFAULT '[]',
+      in_reply_to TEXT DEFAULT '',
+      references_ids TEXT DEFAULT '[]',
+      scheduled_at TEXT DEFAULT '',
+      sent_at TEXT DEFAULT '',
+      received_at TEXT DEFAULT '',
+      priority TEXT DEFAULT 'normal',
+      sentiment TEXT DEFAULT '',
+      ai_summary TEXT DEFAULT '',
+      ai_category TEXT DEFAULT '',
+      created_at TEXT DEFAULT (datetime('now')),
+      updated_at TEXT DEFAULT (datetime('now'))
+    );
+
+    CREATE TABLE IF NOT EXISTS mail_templates (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      category TEXT DEFAULT 'general',
+      subject TEXT DEFAULT '',
+      body TEXT DEFAULT '',
+      default_account TEXT DEFAULT 'general',
+      variables TEXT DEFAULT '[]',
+      created_at TEXT DEFAULT (datetime('now')),
+      updated_at TEXT DEFAULT (datetime('now'))
+    );
+
+    CREATE TABLE IF NOT EXISTS mail_contacts (
+      id TEXT PRIMARY KEY,
+      name TEXT DEFAULT '',
+      email TEXT UNIQUE NOT NULL,
+      company TEXT DEFAULT '',
+      type TEXT DEFAULT 'lead',
+      tags TEXT DEFAULT '[]',
+      notes TEXT DEFAULT '',
+      last_contacted TEXT DEFAULT '',
+      message_count INTEGER DEFAULT 0,
+      created_at TEXT DEFAULT (datetime('now'))
+    );
+
+    CREATE TABLE IF NOT EXISTS mail_send_queue (
+      id TEXT PRIMARY KEY,
+      message_id TEXT NOT NULL,
+      account_id TEXT NOT NULL,
+      status TEXT DEFAULT 'pending',
+      scheduled_at TEXT DEFAULT '',
+      attempted_at TEXT DEFAULT '',
+      error TEXT DEFAULT '',
+      created_at TEXT DEFAULT (datetime('now'))
+    );
+  `);
+
   // ── Migrate existing client_scout_leads table (add columns that may be missing) ──
   const migrations = [
     ['conversion_score', 'INTEGER DEFAULT 0'],

@@ -6,7 +6,7 @@ import {
   Settings, Zap, Target, UserPlus, HeartPulse, MessageSquare, DollarSign,
   CreditCard, PieChart, Shield, Share2, Compass, Brain, Activity,
   Database, ToggleLeft, TestTube, ScrollText, ChevronDown, ChevronRight,
-  Sparkles, Building2, Calendar, TrendingUp, Eye, Scan
+  Sparkles, Building2, Calendar, TrendingUp, Eye, Scan, Mail
 } from 'lucide-react'
 
 const sections = [
@@ -27,6 +27,12 @@ const sections = [
       { to: '/management/proposals', icon: FileText, label: 'Proposals' },
       { to: '/management/outreach', icon: Send, label: 'Outreach' },
       { to: '/management/competitor', icon: Eye, label: 'Competitor Intel' },
+    ]
+  },
+  {
+    title: 'Communication',
+    items: [
+      { to: '/management/mail', icon: Mail, label: 'Mail' },
     ]
   },
   {

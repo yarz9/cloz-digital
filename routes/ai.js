@@ -614,12 +614,22 @@ Provide specific, actionable next steps. Consider: engagement timing, upsell pot
 // 16. EMAIL DRAFT — Model Group: COMMUNICATION
 // ═══════════════════════════════════════════════════════
 router.post('/email-draft', async (req, res) => {
-  const { to, purpose, context, tone, points } = req.body;
+  const { to, purpose, context, tone, points, sender = 'general' } = req.body;
   if (!purpose) return res.status(400).json({ error: 'purpose required' });
+
+  const SENDERS = {
+    anes: { name: 'Anes D.', title: 'Founder & Web Developer', email: 'anes@cloz.digital', signoff: 'Warm regards,\nAnes D.\nFounder & Web Developer\nCloz Digital\nanes@cloz.digital\nwww.cloz.digital' },
+    denis: { name: 'Denis G.', title: 'Client Success Manager', email: 'denis@cloz.digital', signoff: 'Warm regards,\nDenis G.\nClient Success Manager\nCloz Digital\ndenis@cloz.digital\nwww.cloz.digital' },
+    general: { name: 'Cloz Digital Team', title: 'Website Design', email: 'general@cloz.digital', signoff: 'Best regards,\nCloz Digital Team\nWebsite Design • Hosting • Maintenance\ngeneral@cloz.digital\nwww.cloz.digital' },
+    billing: { name: 'Cloz Digital Billing Department', title: 'Accounts & Billing', email: 'billing@cloz.digital', signoff: 'Best regards,\nCloz Digital Billing Department\nAccounts & Billing\nCloz Digital\nbilling@cloz.digital\nwww.cloz.digital' },
+  };
+  const profile = SENDERS[sender] || SENDERS.general;
+
   try {
     const provider = getActiveProvider();
 
-    const prompt = `Draft a professional email for Cloz Digital.
+    const prompt = `You are ${profile.name}, ${profile.title} at Cloz Digital (${profile.email}).
+Draft a professional email.
 
 Recipient: ${to || 'Client'}
 Purpose: ${purpose}
@@ -627,7 +637,10 @@ Context: ${context || 'Standard business communication'}
 Tone: ${tone || 'professional, friendly'}
 ${points ? `Key points to include: ${points}` : ''}
 
-Write a concise, effective email. Sign off as "Cloz Digital Team". Keep it under 200 words unless the topic requires more detail.`;
+Write a concise, effective email. End with this exact signature:
+${profile.signoff}
+
+Never use placeholder text like [Your Name]. Keep it under 200 words unless the topic requires more detail.`;
 
     const schema = {
       type: 'object',

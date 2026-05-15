@@ -37,6 +37,7 @@ import authRoutes from './routes/auth.js';
 import aiRoutes from './routes/ai.js';
 import auditRoutes from './routes/audit.js';
 import scoutRoutes from './routes/scout.js';
+import mailRoutes from './routes/mail.js';
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -78,6 +79,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/ai', apiLimiter, aiRoutes);
 app.use('/api/audit', apiLimiter, auditRoutes);
 app.use('/api/client-scout', apiLimiter, scoutRoutes);
+app.use('/api/mail', apiLimiter, mailRoutes);
 app.use('/api/health', healthRoutes);
 
 // ── Admin API (auth required for config changes) ──

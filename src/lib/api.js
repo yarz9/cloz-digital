@@ -71,6 +71,89 @@ export const ai = {
   generate: (prompt, temperature) => post('/generate', { prompt, temperature }),
 };
 
+// ── Mail API ──
+const MAIL_BASE = '/api/mail';
+
+async function mailGet(endpoint) {
+  const res = await fetch(`${MAIL_BASE}${endpoint}`);
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: res.statusText }));
+    throw new Error(err.error || 'Mail request failed');
+  }
+  return res.json();
+}
+
+async function mailPost(endpoint, body = {}) {
+  const res = await fetch(`${MAIL_BASE}${endpoint}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: res.statusText }));
+    throw new Error(err.error || 'Mail request failed');
+  }
+  return res.json();
+}
+
+async function mailPatch(endpoint, body = {}) {
+  const res = await fetch(`${MAIL_BASE}${endpoint}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: res.statusText }));
+    throw new Error(err.error || 'Mail request failed');
+  }
+  return res.json();
+}
+
+async function mailDelete(endpoint) {
+  const res = await fetch(`${MAIL_BASE}${endpoint}`, { method: 'DELETE' });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: res.statusText }));
+    throw new Error(err.error || 'Mail request failed');
+  }
+  return res.json();
+}
+
+export const mail = {
+  senders: () => mailGet('/senders'),
+  folders: () => mailGet('/folders'),
+  messages: (params = {}) => {
+    const qs = new URLSearchParams(params).toString();
+    return mailGet(`/messages${qs ? '?' + qs : ''}`);
+  },
+  message: (id) => mailGet(`/messages/${id}`),
+  compose: (data) => mailPost('/compose', data),
+  saveDraft: (data) => mailPost('/save-draft', data),
+  send: (id) => mailPost('/send', { id }),
+  reply: (data) => mailPost('/reply', data),
+  forward: (data) => mailPost('/forward', data),
+  schedule: (data) => mailPost('/schedule', data),
+  update: (id, data) => mailPatch(`/messages/${id}`, data),
+  remove: (id) => mailDelete(`/messages/${id}`),
+  stats: () => mailGet('/stats'),
+  templates: () => mailGet('/templates'),
+  createTemplate: (data) => mailPost('/templates', data),
+  contacts: (params = {}) => {
+    const qs = new URLSearchParams(params).toString();
+    return mailGet(`/contacts${qs ? '?' + qs : ''}`);
+  },
+  sync: () => mailPost('/sync'),
+  // AI
+  generate: (data) => mailPost('/generate', data),
+  rewrite: (data) => mailPost('/rewrite', data),
+  summarize: (data) => mailPost('/summarize', data),
+  suggestReply: (data) => mailPost('/suggest-reply', data),
+  generateSubject: (data) => mailPost('/generate-subject', data),
+  generateFollowup: (data) => mailPost('/generate-followup', data),
+  translate: (data) => mailPost('/translate', data),
+  generateInvoiceEmail: (data) => mailPost('/generate-invoice-email', data),
+  generatePaymentReminder: (data) => mailPost('/generate-payment-reminder', data),
+};
+
 // ── Client Scout API ──
 const SCOUT_BASE = '/api/client-scout';
 
