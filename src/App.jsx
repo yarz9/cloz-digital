@@ -57,6 +57,7 @@ import AISettings from './features/ai/AISettings'
 import AuditLab from './features/audit/AuditLab'
 import Mail from './features/mail/Mail'
 import MailAccounts from './features/settings/MailAccounts'
+import Logs from './features/logs/Logs'
 
 export default function App() {
   return (
@@ -92,6 +93,7 @@ export default function App() {
         <Route path="command" element={<CommandCenter />} />
         <Route path="settings" element={<AdminSettings />} />
         <Route path="settings/mail-accounts" element={<MailAccounts />} />
+        <Route path="logs" element={<Logs />} />
       </Route>
 
       {/* ═══ Management Panel (primary business hub) ═══ */}
@@ -149,6 +151,7 @@ export default function App() {
         <Route path="ai/features" element={<AIFeatures />} />
         <Route path="ai/tests" element={<AITests />} />
         <Route path="ai/logs" element={<AILogs />} />
+        <Route path="logs" element={<Logs />} />
         <Route path="ai/health" element={<AIHealth />} />
         <Route path="settings" element={<ManagementSettings />} />
         <Route path="settings/mail-accounts" element={<MailAccounts />} />

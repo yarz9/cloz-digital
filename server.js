@@ -43,6 +43,9 @@ import managementAuthRoutes from './routes/managementAuth.js';
 import mailAccountRoutes from './routes/mailAccounts.js';
 import { seedMailAccounts } from './routes/mailAccounts.js';
 import { startSyncWorker, startSendQueueProcessor } from './services/mailService.js';
+import { ensureActivityLogsTable } from './services/logger.js';
+import { requestLoggerMiddleware, errorLoggerMiddleware } from './middleware/requestLogger.js';
+import activityLogRoutes from './routes/activityLogs.js';
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -52,6 +55,9 @@ app.use(helmet({ contentSecurityPolicy: false }));
 app.use(cors());
 app.use(express.json({ limit: '1mb' }));
 app.use(cookieParser());
+
+// ── Request logging middleware ──
+app.use(requestLoggerMiddleware);
 
 // ── Standalone health check (Railway uses this) ──
 app.get('/health', (_req, res) => {
@@ -88,6 +94,7 @@ app.use('/api/audit', apiLimiter, auditRoutes);
 app.use('/api/client-scout', apiLimiter, scoutRoutes);
 app.use('/api/mail/accounts', apiLimiter, mailAccountRoutes);
 app.use('/api/mail', apiLimiter, mailRoutes);
+app.use('/api/activity-logs', apiLimiter, activityLogRoutes);
 app.use('/api/health', healthRoutes);
 
 // ── Admin API (auth required for config changes) ──
@@ -117,6 +124,9 @@ app.get('*', (_req, res) => {
   }
 });
 
+// ── Error logging middleware ──
+app.use(errorLoggerMiddleware);
+
 // ── Error handler ──
 app.use((err, _req, res, _next) => {
   console.error('[Error]', err.message);
@@ -138,6 +148,7 @@ process.on('unhandledRejection', (reason) => {
 (async () => {
   try {
     const db = await initDatabase();
+    ensureActivityLogsTable(db);
     seedDefaults(db);
     seedMailAccounts(db);
 

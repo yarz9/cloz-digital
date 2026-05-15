@@ -7,7 +7,7 @@ import {
   Settings, Zap, Target, UserPlus, HeartPulse, MessageSquare, DollarSign,
   CreditCard, PieChart, Shield, Share2, Compass, Brain, Activity,
   Database, ToggleLeft, TestTube, ScrollText, ChevronDown, ChevronRight,
-  Sparkles, Building2, Calendar, TrendingUp, Eye, Scan, Mail
+  Sparkles, Building2, Calendar, TrendingUp, Eye, Scan, Mail, Radio
 } from 'lucide-react'
 
 const sections = [
@@ -90,6 +90,7 @@ const sections = [
       { to: '/management/ai/features', icon: ToggleLeft, label: 'Feature Flags' },
       { to: '/management/ai/tests', icon: TestTube, label: 'Test Center' },
       { to: '/management/ai/logs', icon: ScrollText, label: 'System Logs' },
+      { to: '/management/logs', icon: Radio, label: 'Activity Logs' },
       { to: '/management/ai/health', icon: Activity, label: 'Health Monitor' },
       { to: '/management/settings', icon: Settings, label: 'Settings' },
     ]
