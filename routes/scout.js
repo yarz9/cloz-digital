@@ -637,9 +637,9 @@ async function generateOutreachForLead(id, options, res) {
   if (!lead) return res.status(404).json({ error: 'Lead not found' });
 
   const SENDERS = {
-    anes: { name: 'Anes D.', title: 'Founder & Web Developer', email: 'anes@cloz.digital', signoff: 'Warm regards,\nAnes D.\nFounder & Web Developer\nCloz Digital\nanes@cloz.digital\nwww.cloz.digital' },
-    denis: { name: 'Denis G.', title: 'Client Success Manager', email: 'denis@cloz.digital', signoff: 'Warm regards,\nDenis G.\nClient Success Manager\nCloz Digital\ndenis@cloz.digital\nwww.cloz.digital' },
-    general: { name: 'Cloz Digital Team', title: 'Website Design', email: 'general@cloz.digital', signoff: 'Best regards,\nCloz Digital Team\ngeneral@cloz.digital\nwww.cloz.digital' },
+    anes: { name: 'Anes D.', title: 'Founder & Web Developer', email: 'anes@cloz.digital', signoff: 'Warm regards,\nAnes D.\nFounder & Web Developer\nCloz Digital\nanes@cloz.digital\ncloz.digital' },
+    denis: { name: 'Denis G.', title: 'Client Success Manager', email: 'denis@cloz.digital', signoff: 'Warm regards,\nDenis G.\nClient Success Manager\nCloz Digital\ndenis@cloz.digital\ncloz.digital' },
+    general: { name: 'Cloz Digital Team', title: 'Website Design', email: 'general@cloz.digital', signoff: 'Best regards,\nCloz Digital Team\ngeneral@cloz.digital\ncloz.digital' },
   };
   const senderProfile = SENDERS[sender] || SENDERS.anes;
 

@@ -783,10 +783,10 @@ router.post('/email-draft', async (req, res) => {
   if (!purpose) return res.status(400).json({ error: 'purpose required' });
 
   const SENDERS = {
-    anes: { name: 'Anes D.', title: 'Founder & Web Developer', email: 'anes@cloz.digital', signoff: 'Warm regards,\nAnes D.\nFounder & Web Developer\nCloz Digital\nanes@cloz.digital\nwww.cloz.digital' },
-    denis: { name: 'Denis G.', title: 'Client Success Manager', email: 'denis@cloz.digital', signoff: 'Warm regards,\nDenis G.\nClient Success Manager\nCloz Digital\ndenis@cloz.digital\nwww.cloz.digital' },
-    general: { name: 'Cloz Digital Team', title: 'Website Design', email: 'general@cloz.digital', signoff: 'Best regards,\nCloz Digital Team\nWebsite Design • Hosting • Maintenance\ngeneral@cloz.digital\nwww.cloz.digital' },
-    billing: { name: 'Cloz Digital Billing Department', title: 'Accounts & Billing', email: 'billing@cloz.digital', signoff: 'Best regards,\nCloz Digital Billing Department\nAccounts & Billing\nCloz Digital\nbilling@cloz.digital\nwww.cloz.digital' },
+    anes: { name: 'Anes D.', title: 'Founder & Web Developer', email: 'anes@cloz.digital', signoff: 'Warm regards,\nAnes D.\nFounder & Web Developer\nCloz Digital\nanes@cloz.digital\ncloz.digital' },
+    denis: { name: 'Denis G.', title: 'Client Success Manager', email: 'denis@cloz.digital', signoff: 'Warm regards,\nDenis G.\nClient Success Manager\nCloz Digital\ndenis@cloz.digital\ncloz.digital' },
+    general: { name: 'Cloz Digital Team', title: 'Website Design', email: 'general@cloz.digital', signoff: 'Best regards,\nCloz Digital Team\nWebsite Design • Hosting • Maintenance\ngeneral@cloz.digital\ncloz.digital' },
+    billing: { name: 'Cloz Digital Billing Department', title: 'Accounts & Billing', email: 'billing@cloz.digital', signoff: 'Best regards,\nCloz Digital Billing Department\nAccounts & Billing\nCloz Digital\nbilling@cloz.digital\ncloz.digital' },
   };
   const profile = SENDERS[sender] || SENDERS.general;
 

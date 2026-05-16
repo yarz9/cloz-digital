@@ -88,10 +88,10 @@ router.post('/test-resend', async (_req, res) => {
 // ══════════════════════════════════════════════════════════════
 
 const STARTER_ACCOUNTS = [
-  { key: 'anes', account_name: 'Anes', display_name: 'Anes D.', email: 'anes@cloz.digital', title: 'Founder & Web Developer', signature: 'Warm regards,\nAnes D.\nFounder & Web Developer\nCloz Digital\nanes@cloz.digital\nwww.cloz.digital' },
-  { key: 'denis', account_name: 'Denis', display_name: 'Denis G.', email: 'denis@cloz.digital', title: 'Client Success Manager', signature: 'Warm regards,\nDenis G.\nClient Success Manager\nCloz Digital\ndenis@cloz.digital\nwww.cloz.digital' },
-  { key: 'general', account_name: 'General', display_name: 'Cloz Digital Team', email: 'general@cloz.digital', title: 'Website Design • Hosting • Maintenance', signature: 'Best regards,\nCloz Digital Team\nWebsite Design • Hosting • Maintenance\ngeneral@cloz.digital\nwww.cloz.digital', is_default: 1 },
-  { key: 'billing', account_name: 'Billing', display_name: 'Cloz Digital Billing Department', email: 'billing@cloz.digital', title: 'Accounts & Billing', signature: 'Best regards,\nCloz Digital Billing Department\nAccounts & Billing\nCloz Digital\nbilling@cloz.digital\nwww.cloz.digital' },
+  { key: 'anes', account_name: 'Anes', display_name: 'Anes D.', email: 'anes@cloz.digital', title: 'Founder & Web Developer', signature: 'Warm regards,\nAnes D.\nFounder & Web Developer\nCloz Digital\nanes@cloz.digital\ncloz.digital' },
+  { key: 'denis', account_name: 'Denis', display_name: 'Denis G.', email: 'denis@cloz.digital', title: 'Client Success Manager', signature: 'Warm regards,\nDenis G.\nClient Success Manager\nCloz Digital\ndenis@cloz.digital\ncloz.digital' },
+  { key: 'general', account_name: 'General', display_name: 'Cloz Digital Team', email: 'general@cloz.digital', title: 'Website Design • Hosting • Maintenance', signature: 'Best regards,\nCloz Digital Team\nWebsite Design • Hosting • Maintenance\ngeneral@cloz.digital\ncloz.digital', is_default: 1 },
+  { key: 'billing', account_name: 'Billing', display_name: 'Cloz Digital Billing Department', email: 'billing@cloz.digital', title: 'Accounts & Billing', signature: 'Best regards,\nCloz Digital Billing Department\nAccounts & Billing\nCloz Digital\nbilling@cloz.digital\ncloz.digital' },
 ];
 
 /**

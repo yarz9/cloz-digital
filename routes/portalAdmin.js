@@ -7,6 +7,7 @@ import crypto from 'crypto';
 import { getDb } from '../database/init.js';
 import { sendViaResend, isResendConfigured } from '../services/mailService.js';
 import { logInfo, logError } from '../services/logger.js';
+import { APP_URL } from '../config/urls.js';
 
 const router = Router();
 
@@ -79,7 +80,7 @@ router.post('/clients', async (req, res) => {
   let welcomeSent = false;
   if (send_welcome && isResendConfigured()) {
     try {
-      const baseUrl = process.env.PUBLIC_BASE_URL || 'https://www.cloz.digital';
+      const baseUrl = APP_URL;
       const link = `${baseUrl}/portal/login?email=${encodeURIComponent(email)}`;
 
       const html = `<!DOCTYPE html><html><body style="margin:0;padding:0;background:#0B0B0D;color:#F5F5F7;font-family:Inter,sans-serif;">

@@ -177,7 +177,7 @@ export const SNIPPETS = [
     name: 'CTA — View Website',
     category: 'cta',
     trigger: '/cta-web',
-    html: `<div style="margin:24px 0;text-align:center"><a href="https://www.cloz.digital" style="display:inline-block;background:#3B82F6;color:white;padding:12px 24px;border-radius:6px;text-decoration:none;font-weight:600;font-size:14px">Visit Our Website</a></div>`,
+    html: `<div style="margin:24px 0;text-align:center"><a href="https://cloz.digital" style="display:inline-block;background:#3B82F6;color:white;padding:12px 24px;border-radius:6px;text-decoration:none;font-weight:600;font-size:14px">Visit Our Website</a></div>`,
   },
   {
     id: 'contact-block',
@@ -187,7 +187,7 @@ export const SNIPPETS = [
     html: `<div style="margin:20px 0;padding:16px;background:#F3F4F6;border-radius:8px;font-size:13px;line-height:1.6">
   <div style="font-weight:600;margin-bottom:8px">Get in Touch</div>
   <div>Email: general@cloz.digital</div>
-  <div>Web: www.cloz.digital</div>
+  <div>Web: cloz.digital</div>
 </div>`,
   },
   {
@@ -207,7 +207,7 @@ export const SNIPPETS = [
     category: 'blocks',
     trigger: '/social',
     html: `<div style="margin:20px 0;text-align:center;font-size:13px;color:#6B7280">
-  <a href="https://www.cloz.digital" style="color:#3B82F6;text-decoration:none;margin:0 8px">Website</a>
+  <a href="https://cloz.digital" style="color:#3B82F6;text-decoration:none;margin:0 8px">Website</a>
   <span style="color:#D1D5DB">|</span>
   <a href="#" style="color:#3B82F6;text-decoration:none;margin:0 8px">LinkedIn</a>
   <span style="color:#D1D5DB">|</span>

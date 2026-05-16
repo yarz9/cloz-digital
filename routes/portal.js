@@ -8,6 +8,7 @@ import { getDb } from '../database/init.js';
 import { getActiveProvider } from '../providers/index.js';
 import { sendViaResend, isResendConfigured } from '../services/mailService.js';
 import { logInfo, logError, extractRequestContext } from '../services/logger.js';
+import { APP_URL } from '../config/urls.js';
 
 const router = Router();
 
@@ -69,7 +70,7 @@ router.post('/auth/request', async (req, res) => {
     db.prepare(`INSERT INTO portal_magic_links (token, client_id, expires_at) VALUES (?,?,?)`)
       .run(token, client.id, expires);
 
-    const baseUrl = process.env.PUBLIC_BASE_URL || 'https://www.cloz.digital';
+    const baseUrl = APP_URL;
     const magicUrl = `${baseUrl}/portal/verify?token=${token}`;
 
     if (isResendConfigured()) {
@@ -242,7 +243,7 @@ router.post('/tickets', async (req, res) => {
   // Notify internal team (non-blocking)
   if (isResendConfigured()) {
     try {
-      const baseUrl = process.env.PUBLIC_BASE_URL || 'https://www.cloz.digital';
+      const baseUrl = APP_URL;
       await sendViaResend({
         from: process.env.PORTAL_FROM || 'Cloz Digital <general@cloz.digital>',
         to: (process.env.PORTAL_INTERNAL_TO || 'general@cloz.digital,anes@cloz.digital').split(',').map(s => s.trim()),

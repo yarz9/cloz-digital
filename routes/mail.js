@@ -16,28 +16,28 @@ const SENDER_PROFILES = {
     displayName: 'Anes D.',
     title: 'Founder & Web Developer',
     email: 'anes@cloz.digital',
-    signature: `Warm regards,\nAnes D.\nFounder & Web Developer\nCloz Digital\nanes@cloz.digital\nwww.cloz.digital`,
+    signature: `Warm regards,\nAnes D.\nFounder & Web Developer\nCloz Digital\nanes@cloz.digital\ncloz.digital`,
   },
   denis: {
     key: 'denis',
     displayName: 'Denis G.',
     title: 'Client Success Manager',
     email: 'denis@cloz.digital',
-    signature: `Warm regards,\nDenis G.\nClient Success Manager\nCloz Digital\ndenis@cloz.digital\nwww.cloz.digital`,
+    signature: `Warm regards,\nDenis G.\nClient Success Manager\nCloz Digital\ndenis@cloz.digital\ncloz.digital`,
   },
   general: {
     key: 'general',
     displayName: 'Cloz Digital Team',
     title: 'Website Design • Hosting • Maintenance',
     email: 'general@cloz.digital',
-    signature: `Best regards,\nCloz Digital Team\nWebsite Design • Hosting • Maintenance\ngeneral@cloz.digital\nwww.cloz.digital`,
+    signature: `Best regards,\nCloz Digital Team\nWebsite Design • Hosting • Maintenance\ngeneral@cloz.digital\ncloz.digital`,
   },
   billing: {
     key: 'billing',
     displayName: 'Cloz Digital Billing Department',
     title: 'Accounts & Billing',
     email: 'billing@cloz.digital',
-    signature: `Best regards,\nCloz Digital Billing Department\nAccounts & Billing\nCloz Digital\nbilling@cloz.digital\nwww.cloz.digital`,
+    signature: `Best regards,\nCloz Digital Billing Department\nAccounts & Billing\nCloz Digital\nbilling@cloz.digital\ncloz.digital`,
   },
 };
 

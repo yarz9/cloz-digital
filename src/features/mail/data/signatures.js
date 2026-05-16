@@ -8,7 +8,7 @@ export const SIGNATURES = {
     name: 'Anes D.',
     title: 'Founder & Web Developer',
     email: 'anes@cloz.digital',
-    website: 'www.cloz.digital',
+    website: 'cloz.digital',
     html: `<table cellpadding="0" cellspacing="0" border="0" style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;font-size:13px;color:#374151;line-height:1.5;margin-top:24px">
   <tr><td colspan="2" style="padding-bottom:12px;border-bottom:2px solid #3B82F6">&nbsp;</td></tr>
   <tr><td colspan="2" style="padding-top:12px">
@@ -18,14 +18,14 @@ export const SIGNATURES = {
   <tr><td colspan="2" style="padding-top:8px">
     <div style="font-size:12px;color:#6B7280">
       <span style="color:#3B82F6">anes@cloz.digital</span>&nbsp;&nbsp;|&nbsp;&nbsp;
-      <a href="https://www.cloz.digital" style="color:#3B82F6;text-decoration:none">www.cloz.digital</a>
+      <a href="https://cloz.digital" style="color:#3B82F6;text-decoration:none">cloz.digital</a>
     </div>
   </td></tr>
   <tr><td colspan="2" style="padding-top:8px">
     <div style="font-size:11px;color:#9CA3AF">Website Design • Hosting • Maintenance</div>
   </td></tr>
 </table>`,
-    plain: `\n\n---\nAnes D.\nFounder & Web Developer\nCloz Digital\nanes@cloz.digital\nwww.cloz.digital`,
+    plain: `\n\n---\nAnes D.\nFounder & Web Developer\nCloz Digital\nanes@cloz.digital\ncloz.digital`,
   },
 
   denis: {
@@ -33,7 +33,7 @@ export const SIGNATURES = {
     name: 'Denis G.',
     title: 'Client Success Manager',
     email: 'denis@cloz.digital',
-    website: 'www.cloz.digital',
+    website: 'cloz.digital',
     html: `<table cellpadding="0" cellspacing="0" border="0" style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;font-size:13px;color:#374151;line-height:1.5;margin-top:24px">
   <tr><td colspan="2" style="padding-bottom:12px;border-bottom:2px solid #4ADE80">&nbsp;</td></tr>
   <tr><td colspan="2" style="padding-top:12px">
@@ -43,14 +43,14 @@ export const SIGNATURES = {
   <tr><td colspan="2" style="padding-top:8px">
     <div style="font-size:12px;color:#6B7280">
       <span style="color:#4ADE80">denis@cloz.digital</span>&nbsp;&nbsp;|&nbsp;&nbsp;
-      <a href="https://www.cloz.digital" style="color:#4ADE80;text-decoration:none">www.cloz.digital</a>
+      <a href="https://cloz.digital" style="color:#4ADE80;text-decoration:none">cloz.digital</a>
     </div>
   </td></tr>
   <tr><td colspan="2" style="padding-top:8px">
     <div style="font-size:11px;color:#9CA3AF">Website Design • Hosting • Maintenance</div>
   </td></tr>
 </table>`,
-    plain: `\n\n---\nDenis G.\nClient Success Manager\nCloz Digital\ndenis@cloz.digital\nwww.cloz.digital`,
+    plain: `\n\n---\nDenis G.\nClient Success Manager\nCloz Digital\ndenis@cloz.digital\ncloz.digital`,
   },
 
   general: {
@@ -58,7 +58,7 @@ export const SIGNATURES = {
     name: 'Cloz Digital Team',
     title: 'Website Design • Hosting • Maintenance',
     email: 'general@cloz.digital',
-    website: 'www.cloz.digital',
+    website: 'cloz.digital',
     html: `<table cellpadding="0" cellspacing="0" border="0" style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;font-size:13px;color:#374151;line-height:1.5;margin-top:24px">
   <tr><td colspan="2" style="padding-bottom:12px;border-bottom:2px solid #6B7280">&nbsp;</td></tr>
   <tr><td colspan="2" style="padding-top:12px">
@@ -68,11 +68,11 @@ export const SIGNATURES = {
   <tr><td colspan="2" style="padding-top:8px">
     <div style="font-size:12px;color:#6B7280">
       <span style="color:#3B82F6">general@cloz.digital</span>&nbsp;&nbsp;|&nbsp;&nbsp;
-      <a href="https://www.cloz.digital" style="color:#3B82F6;text-decoration:none">www.cloz.digital</a>
+      <a href="https://cloz.digital" style="color:#3B82F6;text-decoration:none">cloz.digital</a>
     </div>
   </td></tr>
 </table>`,
-    plain: `\n\n---\nCloz Digital Team\nWebsite Design • Hosting • Maintenance\ngeneral@cloz.digital\nwww.cloz.digital`,
+    plain: `\n\n---\nCloz Digital Team\nWebsite Design • Hosting • Maintenance\ngeneral@cloz.digital\ncloz.digital`,
   },
 
   billing: {
@@ -80,7 +80,7 @@ export const SIGNATURES = {
     name: 'Cloz Digital Billing Department',
     title: 'Accounts & Billing',
     email: 'billing@cloz.digital',
-    website: 'www.cloz.digital',
+    website: 'cloz.digital',
     html: `<table cellpadding="0" cellspacing="0" border="0" style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;font-size:13px;color:#374151;line-height:1.5;margin-top:24px">
   <tr><td colspan="2" style="padding-bottom:12px;border-bottom:2px solid #FBBF24">&nbsp;</td></tr>
   <tr><td colspan="2" style="padding-top:12px">
@@ -90,7 +90,7 @@ export const SIGNATURES = {
   <tr><td colspan="2" style="padding-top:8px">
     <div style="font-size:12px;color:#6B7280">
       <span style="color:#FBBF24">billing@cloz.digital</span>&nbsp;&nbsp;|&nbsp;&nbsp;
-      <a href="https://www.cloz.digital" style="color:#FBBF24;text-decoration:none">www.cloz.digital</a>
+      <a href="https://cloz.digital" style="color:#FBBF24;text-decoration:none">cloz.digital</a>
     </div>
   </td></tr>
   <tr><td colspan="2" style="padding-top:8px;font-size:11px;color:#9CA3AF">
@@ -99,7 +99,7 @@ export const SIGNATURES = {
     </div>
   </td></tr>
 </table>`,
-    plain: `\n\n---\nCloz Digital Billing Department\nAccounts & Billing\nbilling@cloz.digital\nwww.cloz.digital\n\nPayment methods: Bank transfer (EUR)\nPlease include invoice number as reference`,
+    plain: `\n\n---\nCloz Digital Billing Department\nAccounts & Billing\nbilling@cloz.digital\ncloz.digital\n\nPayment methods: Bank transfer (EUR)\nPlease include invoice number as reference`,
   },
 }
 

@@ -59,7 +59,7 @@ export default function PublicLayout() {
                 </div>
                 <div className="flex items-center gap-2">
                   <Mail size={12} />
-                  <a href="https://www.cloz.digital" className="hover:text-text-secondary transition-colors">www.cloz.digital</a>
+                  <a href="https://cloz.digital" className="hover:text-text-secondary transition-colors">cloz.digital</a>
                 </div>
               </div>
             </div>
