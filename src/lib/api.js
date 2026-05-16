@@ -288,6 +288,47 @@ async function auditPost(endpoint, body = {}) {
   return res.json();
 }
 
+// ── Public Inquiry (homepage contact form) ──
+export const inquiry = {
+  submit: async (data) => {
+    const res = await fetch('/api/public/inquiry', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    const json = await res.json().catch(() => ({ success: false, error: 'Network error' }));
+    if (!res.ok || !json.success) {
+      throw new Error(json.error || `Server returned ${res.status}`);
+    }
+    return json;
+  },
+  list: async (params = {}) => {
+    const qs = new URLSearchParams(params).toString();
+    const res = await fetch(`/api/public/inquiry/list${qs ? '?' + qs : ''}`);
+    if (!res.ok) throw new Error('Failed to load inquiries');
+    return res.json();
+  },
+  get: async (id) => {
+    const res = await fetch(`/api/public/inquiry/${id}`);
+    if (!res.ok) throw new Error('Failed to load inquiry');
+    return res.json();
+  },
+  update: async (id, data) => {
+    const res = await fetch(`/api/public/inquiry/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    if (!res.ok) throw new Error('Failed to update inquiry');
+    return res.json();
+  },
+  remove: async (id) => {
+    const res = await fetch(`/api/public/inquiry/${id}`, { method: 'DELETE' });
+    if (!res.ok) throw new Error('Failed to delete inquiry');
+    return res.json();
+  },
+};
+
 export const audit = {
   /** Run a full website review */
   review: (data) => auditPost('/review', data),

@@ -208,6 +208,38 @@ export async function initDatabase() {
     );
   `);
 
+  // ── Public Inquiries (homepage contact form) ──
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS inquiries (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      email TEXT NOT NULL,
+      business_name TEXT DEFAULT '',
+      current_website TEXT DEFAULT '',
+      service_needed TEXT DEFAULT '',
+      message TEXT DEFAULT '',
+      source TEXT DEFAULT 'website_contact_form',
+      status TEXT DEFAULT 'new',
+      priority TEXT DEFAULT 'medium',
+      ai_score INTEGER DEFAULT 0,
+      ai_package TEXT DEFAULT '',
+      ai_project_value INTEGER DEFAULT 0,
+      ai_followup TEXT DEFAULT '',
+      ai_notes TEXT DEFAULT '',
+      created_lead_id TEXT DEFAULT '',
+      notes TEXT DEFAULT '',
+      ip_address TEXT DEFAULT '',
+      user_agent TEXT DEFAULT '',
+      notification_sent INTEGER DEFAULT 0,
+      auto_reply_sent INTEGER DEFAULT 0,
+      created_at TEXT DEFAULT (datetime('now')),
+      updated_at TEXT DEFAULT (datetime('now'))
+    );
+    CREATE INDEX IF NOT EXISTS idx_inquiries_status ON inquiries(status);
+    CREATE INDEX IF NOT EXISTS idx_inquiries_created ON inquiries(created_at);
+    CREATE INDEX IF NOT EXISTS idx_inquiries_email ON inquiries(email);
+  `);
+
   // ── Mail System Tables ──
   db.exec(`
     CREATE TABLE IF NOT EXISTS mail_accounts (

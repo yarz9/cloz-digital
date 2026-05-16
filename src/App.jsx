@@ -58,6 +58,7 @@ import AuditLab from './features/audit/AuditLab'
 import Mail from './features/mail/Mail'
 import MailAccounts from './features/settings/MailAccounts'
 import Logs from './features/logs/Logs'
+import Inquiries from './features/management/Inquiries'
 
 export default function App() {
   return (
@@ -155,6 +156,7 @@ export default function App() {
         <Route path="ai/health" element={<AIHealth />} />
         <Route path="settings" element={<ManagementSettings />} />
         <Route path="settings/mail-accounts" element={<MailAccounts />} />
+        <Route path="inquiries" element={<Inquiries />} />
       </Route>
 
       {/* ═══ /ai → /management redirect ═══ */}

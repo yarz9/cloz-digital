@@ -46,6 +46,8 @@ import { startSyncWorker, startSendQueueProcessor } from './services/mailService
 import { ensureActivityLogsTable } from './services/logger.js';
 import { requestLoggerMiddleware, errorLoggerMiddleware } from './middleware/requestLogger.js';
 import activityLogRoutes from './routes/activityLogs.js';
+import publicInquiryRoutes from './routes/publicInquiry.js';
+import rateLimit from 'express-rate-limit';
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -95,6 +97,17 @@ app.use('/api/client-scout', apiLimiter, scoutRoutes);
 app.use('/api/mail/accounts', apiLimiter, mailAccountRoutes);
 app.use('/api/mail', apiLimiter, mailRoutes);
 app.use('/api/activity-logs', apiLimiter, activityLogRoutes);
+
+// ── Public inquiry endpoint: stricter rate limit to deter abuse ──
+const inquiryLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  max: 10,
+  message: { success: false, error: 'Too many submissions from this address. Please try again later.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+app.use('/api/public/inquiry', inquiryLimiter, publicInquiryRoutes);
+
 app.use('/api/health', healthRoutes);
 
 // ── Admin API (auth required for config changes) ──

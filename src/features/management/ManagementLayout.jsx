@@ -22,6 +22,7 @@ const sections = [
   {
     title: 'Sales & Growth',
     items: [
+      { to: '/management/inquiries', icon: MessageSquare, label: 'Inquiries' },
       { to: '/management/scout', icon: Search, label: 'Client Scout' },
       { to: '/management/pipeline', icon: GitBranch, label: 'CRM Pipeline' },
       { to: '/management/leads', icon: Target, label: 'Lead Scoring' },
