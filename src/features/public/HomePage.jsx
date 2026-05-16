@@ -3,7 +3,8 @@ import { Link } from 'react-router-dom'
 import {
   ArrowUpRight, ArrowRight, Check, Globe, Paintbrush, Shield, RefreshCw,
   Zap, Monitor, Search, Mail, Compass, PenTool, Code2, Rocket, HeartPulse,
-  Plus, Minus, Sparkles, MapPin, Languages, Smartphone, Gauge,
+  Plus, Minus, Sparkles, MapPin, Languages, Smartphone, Gauge, Clock,
+  CheckCircle2, Lock, ShieldCheck, MessageCircle, FileText, Calendar,
 } from 'lucide-react'
 
 // ══════════════════════════════════════════════════════════════
@@ -131,11 +132,14 @@ export default function HomePage() {
   return (
     <div className="bg-bg text-text-primary">
       <Hero />
+      <TrustBar />
       <Services />
       <Packages />
       <WhyChoose />
       <Process />
+      <RiskReversal />
       <FAQ />
+      <BookingPlaceholder />
       <FinalCTA />
     </div>
   )
@@ -432,6 +436,138 @@ function FinalCTA() {
               <span className="flex items-center gap-1.5"><Languages size={11} />Bosnian · English</span>
             </div>
           </div>
+        </div>
+      </div>
+    </section>
+  )
+}
+
+// ══════════════════════════════════════════════════════════════
+//  TRUST BAR — High-visibility band right below the hero
+// ══════════════════════════════════════════════════════════════
+
+function TrustBar() {
+  const signals = [
+    { icon: MessageCircle, label: 'Free consultation' },
+    { icon: CheckCircle2,  label: 'Honest project assessment' },
+    { icon: Clock,         label: 'Response within 24h' },
+    { icon: Languages,     label: 'Bosnian & English' },
+    { icon: ShieldCheck,   label: 'Hosting & maintenance' },
+  ]
+  return (
+    <section className="border-y border-border bg-surface/60">
+      <div className="max-w-[1200px] mx-auto px-6 py-6">
+        <div className="flex items-center justify-between gap-x-8 gap-y-4 flex-wrap">
+          {signals.map(s => (
+            <div key={s.label} className="flex items-center gap-2 text-[12px] text-text-secondary">
+              <s.icon size={14} className="text-accent shrink-0" />
+              <span>{s.label}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  )
+}
+
+// ══════════════════════════════════════════════════════════════
+//  RISK REVERSAL — Remove objections
+// ══════════════════════════════════════════════════════════════
+
+const riskReversals = [
+  {
+    icon: MessageCircle,
+    title: 'No pressure consultations',
+    desc: 'Book a free 30-minute call. We give you an honest assessment of what your business actually needs. If we are not the right fit, we will tell you.',
+  },
+  {
+    icon: FileText,
+    title: 'Transparent pricing',
+    desc: 'Fixed, written quotes. No hidden fees, no inflated estimates, no surprise invoices. The price you agree to is the price you pay.',
+  },
+  {
+    icon: Lock,
+    title: 'You own everything',
+    desc: 'Code, content, domain, hosting credentials — all yours. We do not lock you in. You can take your site to another provider any time.',
+  },
+  {
+    icon: HeartPulse,
+    title: 'Ongoing support — only if you want it',
+    desc: 'Care plans are optional. Skip them, choose them, cancel them. We earn the relationship every month.',
+  },
+]
+
+function RiskReversal() {
+  return (
+    <section className="py-20 md:py-28 px-6 border-t border-border">
+      <div className="max-w-[1200px] mx-auto">
+        <SectionHeader
+          eyebrow="Zero-risk start"
+          title="Why working with us is a safe bet."
+          subtitle="We've removed every reason to hesitate. There's no risk in starting a conversation with Cloz Digital."
+        />
+
+        <div className="mt-14 grid grid-cols-1 md:grid-cols-2 gap-4">
+          {riskReversals.map(r => (
+            <div key={r.title} className="bg-surface border border-border rounded-xl p-6 hover:border-accent/30 transition-colors">
+              <div className="w-10 h-10 rounded-lg bg-accent-muted flex items-center justify-center mb-4">
+                <r.icon size={18} className="text-accent" />
+              </div>
+              <h3 className="font-display font-semibold text-[16px] mb-2">{r.title}</h3>
+              <p className="text-[13px] text-text-secondary leading-relaxed">{r.desc}</p>
+            </div>
+          ))}
+        </div>
+
+        <div className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-3">
+          <Link to="/contact"
+            className="inline-flex items-center gap-2 bg-accent hover:bg-accent-hover text-white px-6 py-3 rounded-md text-[13px] font-semibold transition-all hover:translate-y-[-1px]">
+            Book a Free Consultation
+            <ArrowUpRight size={13} />
+          </Link>
+          <Link to="/contact"
+            className="inline-flex items-center gap-2 bg-elevated hover:bg-raised border border-border text-text-primary px-6 py-3 rounded-md text-[13px] font-medium transition-colors">
+            Request a Website Review
+          </Link>
+          <Link to="/contact"
+            className="inline-flex items-center gap-2 text-text-secondary hover:text-text-primary px-3 py-3 text-[13px] font-medium transition-colors">
+            Get a Custom Proposal →
+          </Link>
+        </div>
+      </div>
+    </section>
+  )
+}
+
+// ══════════════════════════════════════════════════════════════
+//  BOOKING PLACEHOLDER — Reserved for future calendar integration
+// ══════════════════════════════════════════════════════════════
+
+function BookingPlaceholder() {
+  return (
+    <section className="py-16 px-6 border-t border-border bg-surface/40">
+      <div className="max-w-[820px] mx-auto text-center">
+        <div className="inline-flex items-center gap-2 px-3 py-1 mb-4 rounded-full bg-accent-muted border border-accent/20">
+          <Calendar size={11} className="text-accent" />
+          <span className="text-[11px] font-medium text-accent uppercase tracking-wider">Direct Booking</span>
+        </div>
+        <h2 className="font-display font-bold text-[26px] md:text-[32px] tracking-tight">
+          Prefer to book directly?
+        </h2>
+        <p className="mt-4 text-[14px] text-text-secondary leading-relaxed max-w-[560px] mx-auto">
+          Scheduled consultations are coming soon. For now, send us a quick note and we'll reply with a few times that work for both sides.
+        </p>
+        <div className="mt-7 flex items-center justify-center gap-3 flex-wrap">
+          <Link to="/contact"
+            className="inline-flex items-center gap-2 bg-accent hover:bg-accent-hover text-white px-5 py-3 rounded-md text-[13px] font-semibold transition-colors">
+            <MessageCircle size={13} />
+            Send a Message
+          </Link>
+          <a href="mailto:general@cloz.digital?subject=Consultation%20Request"
+            className="inline-flex items-center gap-2 bg-elevated hover:bg-raised border border-border text-text-primary px-5 py-3 rounded-md text-[13px] font-medium transition-colors">
+            <Mail size={13} />
+            general@cloz.digital
+          </a>
         </div>
       </div>
     </section>

@@ -84,18 +84,40 @@
             "inLanguage": "en"
           },
           {
-            "@type": "ProfessionalService",
+            "@type": ["ProfessionalService", "LocalBusiness"],
+            "@id": "https://www.cloz.digital/#business",
             "name": "Cloz Digital",
             "image": "https://www.cloz.digital/og.png",
             "url": "https://www.cloz.digital",
             "telephone": "",
             "priceRange": "200 BAM – 1500 BAM",
+            "currenciesAccepted": "BAM, EUR",
+            "paymentAccepted": "Bank Transfer, Card",
             "address": {
               "@type": "PostalAddress",
               "addressLocality": "Sarajevo",
+              "addressRegion": "Federation of Bosnia and Herzegovina",
               "addressCountry": "BA"
             },
+            "geo": {
+              "@type": "GeoCoordinates",
+              "latitude": 43.8563,
+              "longitude": 18.4131
+            },
+            "areaServed": [
+              { "@type": "Country", "name": "Bosnia and Herzegovina" },
+              { "@type": "Country", "name": "Croatia" },
+              { "@type": "Country", "name": "Serbia" },
+              { "@type": "Country", "name": "Montenegro" },
+              { "@type": "Country", "name": "Slovenia" }
+            ],
             "serviceType": ["Web Design", "Web Development", "Web Hosting", "SEO Services", "Website Maintenance"],
+            "openingHoursSpecification": {
+              "@type": "OpeningHoursSpecification",
+              "dayOfWeek": ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"],
+              "opens": "09:00",
+              "closes": "18:00"
+            },
             "hasOfferCatalog": {
               "@type": "OfferCatalog",
               "name": "Cloz Digital Packages",
@@ -123,6 +145,60 @@
                 }
               ]
             }
+          },
+          {
+            "@type": "FAQPage",
+            "@id": "https://www.cloz.digital/#faq",
+            "mainEntity": [
+              {
+                "@type": "Question",
+                "name": "How much does a website cost?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "Launch Care starts at 800 BAM for a complete 5-page site. Growth Care is 1,500 BAM for a larger 12-page build. Presence Care is 200 BAM/month for ongoing management of an existing site. Every quote includes a clear scope — no surprises."
+                }
+              },
+              {
+                "@type": "Question",
+                "name": "How long does a project take?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "Launch Care typically delivers in 2 to 3 weeks. Growth Care takes 4 to 6 weeks depending on scope. We agree on a timeline at the start and keep you updated throughout."
+                }
+              },
+              {
+                "@type": "Question",
+                "name": "Is hosting included?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "Yes. Both Launch Care and Growth Care include hosting setup, SSL, and proper domain configuration. After the included support window, hosting can continue under a Presence Care plan."
+                }
+              },
+              {
+                "@type": "Question",
+                "name": "Who owns the website when it is done?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "You do. Code, content, domain, and hosting credentials are all yours. We do not hold your site hostage."
+                }
+              },
+              {
+                "@type": "Question",
+                "name": "Can you redesign my current site?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "Yes — redesigning outdated or poorly performing websites is one of our main services. We modernize the design, fix conversion issues, and migrate content cleanly."
+                }
+              },
+              {
+                "@type": "Question",
+                "name": "What happens after launch?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "Launch Care includes 30 days of post-launch support. Growth Care includes 3 months. After that, Presence Care keeps your site updated, secure, and maintained for 200 BAM/month."
+                }
+              }
+            ]
           }
         ]
       }

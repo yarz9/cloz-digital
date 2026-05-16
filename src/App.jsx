@@ -6,6 +6,7 @@ import WorkPage from './features/public/WorkPage'
 import AboutPage from './features/public/AboutPage'
 import ContactPage from './features/public/ContactPage'
 import PackagesPage from './features/public/PackagesPage'
+import ThankYouPage from './features/public/ThankYouPage'
 import WorkspaceLayout from './features/workspace/WorkspaceLayout'
 import ManagementLayout from './features/management/ManagementLayout'
 
@@ -71,6 +72,7 @@ export default function App() {
         <Route path="about" element={<AboutPage />} />
         <Route path="contact" element={<ContactPage />} />
         <Route path="packages" element={<PackagesPage />} />
+        <Route path="thank-you" element={<ThankYouPage />} />
       </Route>
 
       {/* ═══ Business Admin Panel (legacy, still functional) ═══ */}

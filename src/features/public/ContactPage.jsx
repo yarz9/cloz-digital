@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
-import { Mail, MapPin, Clock, Loader2, CheckCircle2, AlertCircle } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
+import { Mail, MapPin, Clock, Loader2, AlertCircle, ShieldCheck } from 'lucide-react'
 import { inquiry } from '@/lib/api'
 
 const SERVICES = [
@@ -13,6 +14,7 @@ const SERVICES = [
 
 export default function ContactPage() {
   useEffect(() => { document.title = 'Contact — Cloz Digital' }, [])
+  const navigate = useNavigate()
 
   const [form, setForm] = useState({
     name: '', email: '', businessName: '', currentWebsite: '',
@@ -20,7 +22,6 @@ export default function ContactPage() {
     website_url: '',  // honeypot
   })
   const [loading, setLoading] = useState(false)
-  const [success, setSuccess] = useState(null)
   const [error, setError] = useState('')
 
   const update = (field, value) => setForm(f => ({ ...f, [field]: value }))
@@ -38,8 +39,12 @@ export default function ContactPage() {
     setLoading(true)
     try {
       const result = await inquiry.submit(form)
-      setSuccess(result)
-      setForm({ name: '', email: '', businessName: '', currentWebsite: '', serviceNeeded: SERVICES[0], message: '', website_url: '' })
+      // Redirect to the branded thank-you page with inquiry reference
+      const qs = new URLSearchParams({
+        id: result.inquiryId || '',
+        name: form.name || '',
+      }).toString()
+      navigate(`/thank-you?${qs}`)
     } catch (err) {
       setError(err.message || 'Could not submit. Please try again or email general@cloz.digital.')
     } finally {
@@ -70,10 +75,11 @@ export default function ContactPage() {
 
           {/* ── Right: Form ── */}
           <div>
-            {success ? (
-              <SuccessState onReset={() => setSuccess(null)} />
-            ) : (
-              <form className="space-y-4" onSubmit={handleSubmit} noValidate>
+            <div className="mb-5 flex items-center gap-2 px-3 py-2 bg-success/5 border border-success/15 rounded-md text-[12px] text-success">
+              <ShieldCheck size={13} className="shrink-0" />
+              <span>No spam. No obligation. Just an honest conversation about your project.</span>
+            </div>
+            <form className="space-y-4" onSubmit={handleSubmit} noValidate>
                 {/* Honeypot — hidden field that should remain empty */}
                 <input
                   type="text" name="website_url" value={form.website_url}
@@ -124,11 +130,11 @@ export default function ContactPage() {
                   {loading ? <><Loader2 size={14} className="animate-spin" /> Sending...</> : 'Send Inquiry'}
                 </button>
 
-                <p className="text-[11px] text-text-tertiary text-center">
-                  No spam. No sales pressure. Just an honest conversation about your project.
+                <p className="text-[11px] text-text-tertiary text-center leading-relaxed">
+                  We respond within <span className="text-text-secondary">24 hours</span> — usually the same day.<br/>
+                  Direct email: <a href="mailto:general@cloz.digital" className="text-accent hover:text-accent-hover">general@cloz.digital</a>
                 </p>
               </form>
-            )}
           </div>
         </div>
       </div>
@@ -139,28 +145,6 @@ export default function ContactPage() {
 // ══════════════════════════════════════════════════════════════
 //  SUBCOMPONENTS
 // ══════════════════════════════════════════════════════════════
-
-function SuccessState({ onReset }) {
-  return (
-    <div className="bg-surface border border-success/30 rounded-xl p-8 text-center">
-      <div className="w-14 h-14 mx-auto rounded-full bg-success/10 flex items-center justify-center mb-4">
-        <CheckCircle2 size={26} className="text-success" />
-      </div>
-      <h2 className="font-display font-bold text-[20px] mb-2">Inquiry received.</h2>
-      <p className="text-[14px] text-text-secondary leading-relaxed mb-5 max-w-[400px] mx-auto">
-        Thank you for contacting Cloz Digital. We've received your inquiry and will respond within 24 hours &mdash; usually the same day.
-      </p>
-      <p className="text-[12px] text-text-tertiary mb-6">
-        A confirmation has been sent to your inbox. Need to reach us in the meantime?{' '}
-        <a href="mailto:general@cloz.digital" className="text-accent hover:text-accent-hover">general@cloz.digital</a>
-      </p>
-      <button onClick={onReset}
-        className="text-[12px] text-text-tertiary hover:text-text-primary transition-colors underline">
-        Send another inquiry
-      </button>
-    </div>
-  )
-}
 
 function Field({ label, required, children }) {
   return (
