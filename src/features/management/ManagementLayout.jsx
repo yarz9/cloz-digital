@@ -86,6 +86,13 @@ const sections = [
     ]
   },
   {
+    title: 'Operations & Legal',
+    items: [
+      { to: '/management/operations', icon: Wrench, label: 'Operations' },
+      { to: '/management/legal', icon: Shield, label: 'Legal & Compliance' },
+    ]
+  },
+  {
     title: 'System & AI',
     items: [
       { to: '/management/ai/provider', icon: Zap, label: 'AI Provider' },

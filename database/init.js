@@ -209,6 +209,170 @@ export async function initDatabase() {
   `);
 
   // ══════════════════════════════════════════════════════════════
+  //  OPERATIONS / SOP ENGINE
+  // ══════════════════════════════════════════════════════════════
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS sops (
+      id TEXT PRIMARY KEY,
+      title TEXT NOT NULL,
+      slug TEXT UNIQUE NOT NULL,
+      category TEXT DEFAULT 'general',
+      description TEXT DEFAULT '',
+      default_owner TEXT DEFAULT '',
+      estimated_duration TEXT DEFAULT '',
+      tags TEXT DEFAULT '[]',
+      published INTEGER DEFAULT 1,
+      version INTEGER DEFAULT 1,
+      created_at TEXT DEFAULT (datetime('now')),
+      updated_at TEXT DEFAULT (datetime('now'))
+    );
+
+    CREATE TABLE IF NOT EXISTS sop_steps (
+      id TEXT PRIMARY KEY,
+      sop_id TEXT NOT NULL,
+      position INTEGER NOT NULL,
+      title TEXT NOT NULL,
+      description TEXT DEFAULT '',
+      owner TEXT DEFAULT '',
+      due_offset_days INTEGER DEFAULT 0,
+      checklist TEXT DEFAULT '[]',
+      required INTEGER DEFAULT 1,
+      depends_on TEXT DEFAULT '',
+      created_at TEXT DEFAULT (datetime('now'))
+    );
+    CREATE INDEX IF NOT EXISTS idx_sop_steps_sop ON sop_steps(sop_id);
+
+    CREATE TABLE IF NOT EXISTS sop_instances (
+      id TEXT PRIMARY KEY,
+      sop_id TEXT NOT NULL,
+      sop_title TEXT NOT NULL,
+      reference_kind TEXT DEFAULT '',
+      reference_id TEXT DEFAULT '',
+      reference_label TEXT DEFAULT '',
+      status TEXT DEFAULT 'in_progress',
+      assignee TEXT DEFAULT '',
+      started_at TEXT DEFAULT (datetime('now')),
+      completed_at TEXT DEFAULT '',
+      due_at TEXT DEFAULT '',
+      progress_pct INTEGER DEFAULT 0,
+      notes TEXT DEFAULT ''
+    );
+    CREATE INDEX IF NOT EXISTS idx_sop_instances_status ON sop_instances(status);
+
+    CREATE TABLE IF NOT EXISTS sop_instance_steps (
+      id TEXT PRIMARY KEY,
+      instance_id TEXT NOT NULL,
+      step_id TEXT NOT NULL,
+      position INTEGER NOT NULL,
+      title TEXT NOT NULL,
+      owner TEXT DEFAULT '',
+      status TEXT DEFAULT 'pending',
+      checklist_state TEXT DEFAULT '[]',
+      notes TEXT DEFAULT '',
+      completed_at TEXT DEFAULT '',
+      completed_by TEXT DEFAULT ''
+    );
+    CREATE INDEX IF NOT EXISTS idx_sop_instance_steps_instance ON sop_instance_steps(instance_id);
+
+    CREATE TABLE IF NOT EXISTS sop_automations (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      trigger_event TEXT NOT NULL,
+      sop_id TEXT NOT NULL,
+      conditions TEXT DEFAULT '{}',
+      enabled INTEGER DEFAULT 1,
+      times_triggered INTEGER DEFAULT 0,
+      last_triggered_at TEXT DEFAULT '',
+      created_at TEXT DEFAULT (datetime('now'))
+    );
+
+    CREATE TABLE IF NOT EXISTS audit_events (
+      id TEXT PRIMARY KEY,
+      kind TEXT NOT NULL,
+      actor TEXT DEFAULT '',
+      entity_kind TEXT DEFAULT '',
+      entity_id TEXT DEFAULT '',
+      summary TEXT NOT NULL,
+      details TEXT DEFAULT '{}',
+      created_at TEXT DEFAULT (datetime('now'))
+    );
+    CREATE INDEX IF NOT EXISTS idx_audit_events_kind ON audit_events(kind);
+    CREATE INDEX IF NOT EXISTS idx_audit_events_created ON audit_events(created_at);
+  `);
+
+  // ══════════════════════════════════════════════════════════════
+  //  LEGAL & COMPLIANCE
+  // ══════════════════════════════════════════════════════════════
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS legal_templates (
+      id TEXT PRIMARY KEY,
+      slug TEXT UNIQUE NOT NULL,
+      title TEXT NOT NULL,
+      category TEXT DEFAULT 'public',
+      body TEXT NOT NULL,
+      version INTEGER DEFAULT 1,
+      effective_date TEXT DEFAULT '',
+      published INTEGER DEFAULT 1,
+      created_at TEXT DEFAULT (datetime('now')),
+      updated_at TEXT DEFAULT (datetime('now'))
+    );
+
+    CREATE TABLE IF NOT EXISTS legal_documents (
+      id TEXT PRIMARY KEY,
+      template_slug TEXT DEFAULT '',
+      client_id TEXT DEFAULT '',
+      title TEXT NOT NULL,
+      kind TEXT DEFAULT 'generated',
+      body TEXT NOT NULL,
+      params TEXT DEFAULT '{}',
+      version INTEGER DEFAULT 1,
+      effective_date TEXT DEFAULT '',
+      signed_by TEXT DEFAULT '',
+      signed_at TEXT DEFAULT '',
+      created_at TEXT DEFAULT (datetime('now'))
+    );
+    CREATE INDEX IF NOT EXISTS idx_legal_documents_client ON legal_documents(client_id);
+
+    CREATE TABLE IF NOT EXISTS legal_versions (
+      id TEXT PRIMARY KEY,
+      template_slug TEXT NOT NULL,
+      version INTEGER NOT NULL,
+      body TEXT NOT NULL,
+      effective_date TEXT DEFAULT '',
+      change_note TEXT DEFAULT '',
+      created_at TEXT DEFAULT (datetime('now'))
+    );
+    CREATE INDEX IF NOT EXISTS idx_legal_versions_slug ON legal_versions(template_slug);
+
+    CREATE TABLE IF NOT EXISTS cookie_consents (
+      id TEXT PRIMARY KEY,
+      visitor_id TEXT NOT NULL,
+      necessary INTEGER DEFAULT 1,
+      analytics INTEGER DEFAULT 0,
+      marketing INTEGER DEFAULT 0,
+      policy_version TEXT DEFAULT '',
+      ip_address TEXT DEFAULT '',
+      user_agent TEXT DEFAULT '',
+      created_at TEXT DEFAULT (datetime('now'))
+    );
+    CREATE INDEX IF NOT EXISTS idx_cookie_consents_visitor ON cookie_consents(visitor_id);
+
+    CREATE TABLE IF NOT EXISTS privacy_requests (
+      id TEXT PRIMARY KEY,
+      kind TEXT NOT NULL,
+      name TEXT DEFAULT '',
+      email TEXT NOT NULL,
+      message TEXT DEFAULT '',
+      status TEXT DEFAULT 'new',
+      assignee TEXT DEFAULT '',
+      notes TEXT DEFAULT '',
+      created_at TEXT DEFAULT (datetime('now')),
+      resolved_at TEXT DEFAULT ''
+    );
+    CREATE INDEX IF NOT EXISTS idx_privacy_requests_status ON privacy_requests(status);
+  `);
+
+  // ══════════════════════════════════════════════════════════════
   //  CLIENT PORTAL — A private workspace per client.
   //  Phase-1 schema. Real file storage and e-sig integration land in Phase 2/3.
   // ══════════════════════════════════════════════════════════════

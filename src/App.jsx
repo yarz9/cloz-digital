@@ -7,6 +7,7 @@ import AboutPage from './features/public/AboutPage'
 import ContactPage from './features/public/ContactPage'
 import PackagesPage from './features/public/PackagesPage'
 import ThankYouPage from './features/public/ThankYouPage'
+import LegalPage from './features/public/LegalPage'
 import WorkspaceLayout from './features/workspace/WorkspaceLayout'
 import ManagementLayout from './features/management/ManagementLayout'
 
@@ -62,6 +63,8 @@ import Logs from './features/logs/Logs'
 import Inquiries from './features/management/Inquiries'
 import Marketing from './features/marketing/Marketing'
 import PortalClients from './features/management/PortalClients'
+import Operations from './features/operations/Operations'
+import Legal from './features/legal/Legal'
 import PortalLayout from './features/portal/PortalLayout'
 import PortalLogin from './features/portal/PortalLogin'
 import {
@@ -84,6 +87,10 @@ export default function App() {
         <Route path="contact" element={<ContactPage />} />
         <Route path="packages" element={<PackagesPage />} />
         <Route path="thank-you" element={<ThankYouPage />} />
+        <Route path="privacy-policy"   element={<LegalPage slug="privacy-policy"   fallbackTitle="Privacy Policy" />} />
+        <Route path="terms-of-service" element={<LegalPage slug="terms-of-service" fallbackTitle="Terms of Service" />} />
+        <Route path="cookie-policy"    element={<LegalPage slug="cookie-policy"    fallbackTitle="Cookie Policy" />} />
+        <Route path="disclaimer"       element={<LegalPage slug="disclaimer"       fallbackTitle="Disclaimer" />} />
       </Route>
 
       {/* ═══ Business Admin Panel (legacy, still functional) ═══ */}
@@ -172,6 +179,8 @@ export default function App() {
         <Route path="inquiries" element={<Inquiries />} />
         <Route path="marketing" element={<Marketing />} />
         <Route path="portal-clients" element={<PortalClients />} />
+        <Route path="operations" element={<Operations />} />
+        <Route path="legal" element={<Legal />} />
       </Route>
 
       {/* ═══ Client Portal ═══ */}

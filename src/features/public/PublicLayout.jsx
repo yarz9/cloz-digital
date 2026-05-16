@@ -1,5 +1,6 @@
 import { Outlet, Link, NavLink } from 'react-router-dom'
 import { ArrowUpRight, Mail, MapPin } from 'lucide-react'
+import CookieConsent from '@/components/CookieConsent'
 
 export default function PublicLayout() {
   return (
@@ -125,12 +126,15 @@ export default function PublicLayout() {
             </span>
             <div className="flex gap-6 text-[12px] text-text-tertiary">
               <Link to="/contact" className="hover:text-text-secondary transition-colors">Contact</Link>
-              <a href="#" className="hover:text-text-secondary transition-colors">Privacy</a>
-              <a href="#" className="hover:text-text-secondary transition-colors">Terms</a>
+              <Link to="/privacy-policy" className="hover:text-text-secondary transition-colors">Privacy</Link>
+              <Link to="/terms-of-service" className="hover:text-text-secondary transition-colors">Terms</Link>
+              <Link to="/cookie-policy" className="hover:text-text-secondary transition-colors">Cookies</Link>
             </div>
           </div>
         </div>
       </footer>
+
+      <CookieConsent />
     </div>
   )
 }

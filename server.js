@@ -50,6 +50,9 @@ import publicInquiryRoutes from './routes/publicInquiry.js';
 import marketingRoutes from './routes/marketing.js';
 import portalRoutes from './routes/portal.js';
 import portalAdminRoutes from './routes/portalAdmin.js';
+import operationsRoutes from './routes/operations.js';
+import legalRoutes from './routes/legal.js';
+import { seedOps } from './database/seedOps.js';
 import rateLimit from 'express-rate-limit';
 
 const app = express();
@@ -103,6 +106,8 @@ app.use('/api/activity-logs', apiLimiter, activityLogRoutes);
 app.use('/api/marketing', apiLimiter, marketingRoutes);
 app.use('/api/portal', apiLimiter, portalRoutes);
 app.use('/api/portal-admin', apiLimiter, portalAdminRoutes);
+app.use('/api/operations', apiLimiter, operationsRoutes);
+app.use('/api/legal', apiLimiter, legalRoutes);
 
 // ── Public inquiry endpoint: stricter rate limit to deter abuse ──
 const inquiryLimiter = rateLimit({
@@ -170,6 +175,7 @@ process.on('unhandledRejection', (reason) => {
     ensureActivityLogsTable(db);
     seedDefaults(db);
     seedMailAccounts(db);
+    seedOps(db);
 
     // Start mail background workers
     startSyncWorker();
