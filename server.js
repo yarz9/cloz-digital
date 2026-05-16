@@ -47,6 +47,7 @@ import { ensureActivityLogsTable } from './services/logger.js';
 import { requestLoggerMiddleware, errorLoggerMiddleware } from './middleware/requestLogger.js';
 import activityLogRoutes from './routes/activityLogs.js';
 import publicInquiryRoutes from './routes/publicInquiry.js';
+import marketingRoutes from './routes/marketing.js';
 import rateLimit from 'express-rate-limit';
 
 const app = express();
@@ -97,6 +98,7 @@ app.use('/api/client-scout', apiLimiter, scoutRoutes);
 app.use('/api/mail/accounts', apiLimiter, mailAccountRoutes);
 app.use('/api/mail', apiLimiter, mailRoutes);
 app.use('/api/activity-logs', apiLimiter, activityLogRoutes);
+app.use('/api/marketing', apiLimiter, marketingRoutes);
 
 // ── Public inquiry endpoint: stricter rate limit to deter abuse ──
 const inquiryLimiter = rateLimit({

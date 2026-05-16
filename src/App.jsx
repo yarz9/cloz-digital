@@ -60,6 +60,7 @@ import Mail from './features/mail/Mail'
 import MailAccounts from './features/settings/MailAccounts'
 import Logs from './features/logs/Logs'
 import Inquiries from './features/management/Inquiries'
+import Marketing from './features/marketing/Marketing'
 
 export default function App() {
   return (
@@ -159,6 +160,7 @@ export default function App() {
         <Route path="settings" element={<ManagementSettings />} />
         <Route path="settings/mail-accounts" element={<MailAccounts />} />
         <Route path="inquiries" element={<Inquiries />} />
+        <Route path="marketing" element={<Marketing />} />
       </Route>
 
       {/* ═══ /ai → /management redirect ═══ */}

@@ -288,6 +288,39 @@ async function auditPost(endpoint, body = {}) {
   return res.json();
 }
 
+// ── Marketing platform ──
+const MARKETING_BASE = '/api/marketing';
+
+async function marketingPost(endpoint, body = {}) {
+  const res = await fetch(`${MARKETING_BASE}${endpoint}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: res.statusText }));
+    throw new Error(err.error || 'Marketing request failed');
+  }
+  return res.json();
+}
+
+export const marketing = {
+  keywords:          (data) => marketingPost('/keywords', data),
+  serpIntent:        (data) => marketingPost('/serp-intent', data),
+  blogTopics:        (data) => marketingPost('/blog-topics', data),
+  contentBrief:      (data) => marketingPost('/content-brief', data),
+  googleAds:         (data) => marketingPost('/google-ads', data),
+  metaAds:           (data) => marketingPost('/meta-ads', data),
+  landingCritique:   (data) => marketingPost('/landing-critique', data),
+  localSEO:          (data) => marketingPost('/local-seo', data),
+  seoAudit:          (data) => marketingPost('/seo-audit', data),
+  competitorAnalysis:(data) => marketingPost('/competitor-analysis', data),
+  dailyBriefing:     (data) => marketingPost('/daily-briefing', data),
+  insights:          (data) => marketingPost('/insights', data),
+  report:            (data) => marketingPost('/marketing-report', data),
+  ctaIdeas:          (data) => marketingPost('/cta-ideas', data),
+};
+
 // ── Public Inquiry (homepage contact form) ──
 export const inquiry = {
   submit: async (data) => {

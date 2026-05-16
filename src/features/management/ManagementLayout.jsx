@@ -1,6 +1,7 @@
 import { Outlet, NavLink, useLocation } from 'react-router-dom'
 import { useState, useEffect } from 'react'
 import ManagementLogin from './ManagementLogin'
+import { useUser } from '@/contexts/UserContext'
 import {
   LayoutDashboard, Command, Search, GitBranch, Users, FileText, Send, Receipt,
   Globe, Server, Wrench, CheckSquare, Palette, FileBarChart, BookOpen, BarChart3,
@@ -67,6 +68,7 @@ const sections = [
   {
     title: 'Content & Marketing',
     items: [
+      { to: '/management/marketing', icon: TrendingUp, label: 'Marketing OS' },
       { to: '/management/content', icon: Palette, label: 'Content Studio' },
       { to: '/management/social', icon: Share2, label: 'Social Planner' },
       { to: '/management/seo', icon: Compass, label: 'SEO Dashboard' },
@@ -100,6 +102,7 @@ const sections = [
 
 export default function ManagementLayout() {
   const location = useLocation()
+  const { user, clearUser } = useUser()
   const [collapsed, setCollapsed] = useState({})
   const [authenticated, setAuthenticated] = useState(null) // null = checking, true/false
 
@@ -120,6 +123,11 @@ export default function ManagementLayout() {
 
   if (!authenticated) {
     return <ManagementLogin onAuthenticated={() => setAuthenticated(true)} />
+  }
+
+  // Authenticated but no operator selected (after "Switch user") — show picker only
+  if (!user) {
+    return <ManagementLogin initialStep={3} onAuthenticated={() => {}} />
   }
 
   const toggle = (title) => setCollapsed(prev => ({ ...prev, [title]: !prev[title] }))
@@ -143,6 +151,24 @@ export default function ManagementLayout() {
             MGT
           </span>
         </div>
+
+        {/* Active operator */}
+        {user && (
+          <div className="px-3 py-2.5 border-b border-border shrink-0 flex items-center gap-2.5">
+            <div className="w-7 h-7 rounded-full flex items-center justify-center text-[11px] font-display font-bold text-white shrink-0"
+              style={{ background: user.color }}>
+              {user.avatar}
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="text-[12px] font-medium text-text-primary truncate">{user.name}</div>
+              <div className="text-[9px] text-text-tertiary truncate">{user.title}</div>
+            </div>
+            <button onClick={clearUser} title="Switch user"
+              className="text-[10px] text-text-tertiary hover:text-accent transition-colors">
+              Switch
+            </button>
+          </div>
+        )}
 
         {/* Navigation */}
         <nav className="flex-1 px-2 py-3 space-y-0.5 overflow-y-auto">
