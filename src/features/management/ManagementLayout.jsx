@@ -42,6 +42,7 @@ const sections = [
     title: 'Client Management',
     items: [
       { to: '/management/clients', icon: Users, label: 'Clients' },
+      { to: '/management/portal-clients', icon: Shield, label: 'Portal Access' },
       { to: '/management/onboarding', icon: UserPlus, label: 'Onboarding' },
       { to: '/management/health', icon: HeartPulse, label: 'Client Health' },
       { to: '/management/communications', icon: MessageSquare, label: 'Communications' },

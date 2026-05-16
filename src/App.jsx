@@ -61,6 +61,16 @@ import MailAccounts from './features/settings/MailAccounts'
 import Logs from './features/logs/Logs'
 import Inquiries from './features/management/Inquiries'
 import Marketing from './features/marketing/Marketing'
+import PortalClients from './features/management/PortalClients'
+import PortalLayout from './features/portal/PortalLayout'
+import PortalLogin from './features/portal/PortalLogin'
+import {
+  Dashboard as PortalDashboard, Support, SupportDetail, Assets,
+  Billing as PortalBilling, Hosting as PortalHosting, Messages as PortalMessages,
+  Approvals, Proposals as PortalProposals, ProposalDetail,
+  Maintenance as PortalMaintenance, Assistant, Studio,
+  Knowledge as PortalKnowledge,
+} from './features/portal/pages'
 
 export default function App() {
   return (
@@ -161,6 +171,28 @@ export default function App() {
         <Route path="settings/mail-accounts" element={<MailAccounts />} />
         <Route path="inquiries" element={<Inquiries />} />
         <Route path="marketing" element={<Marketing />} />
+        <Route path="portal-clients" element={<PortalClients />} />
+      </Route>
+
+      {/* ═══ Client Portal ═══ */}
+      <Route path="/portal/login" element={<PortalLogin />} />
+      <Route path="/portal/verify" element={<PortalLogin />} />
+      <Route path="/portal" element={<PortalLayout />}>
+        <Route index element={<Navigate to="/portal/dashboard" replace />} />
+        <Route path="dashboard" element={<PortalDashboard />} />
+        <Route path="support" element={<Support />} />
+        <Route path="support/:id" element={<SupportDetail />} />
+        <Route path="assets" element={<Assets />} />
+        <Route path="billing" element={<PortalBilling />} />
+        <Route path="hosting" element={<PortalHosting />} />
+        <Route path="approvals" element={<Approvals />} />
+        <Route path="proposals" element={<PortalProposals />} />
+        <Route path="proposals/:id" element={<ProposalDetail />} />
+        <Route path="maintenance" element={<PortalMaintenance />} />
+        <Route path="messages" element={<PortalMessages />} />
+        <Route path="assistant" element={<Assistant />} />
+        <Route path="studio" element={<Studio />} />
+        <Route path="knowledge" element={<PortalKnowledge />} />
       </Route>
 
       {/* ═══ /ai → /management redirect ═══ */}

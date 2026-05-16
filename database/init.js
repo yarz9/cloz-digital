@@ -208,6 +208,165 @@ export async function initDatabase() {
     );
   `);
 
+  // ══════════════════════════════════════════════════════════════
+  //  CLIENT PORTAL — A private workspace per client.
+  //  Phase-1 schema. Real file storage and e-sig integration land in Phase 2/3.
+  // ══════════════════════════════════════════════════════════════
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS portal_clients (
+      id TEXT PRIMARY KEY,
+      business_name TEXT NOT NULL,
+      contact_name TEXT DEFAULT '',
+      email TEXT UNIQUE NOT NULL,
+      phone TEXT DEFAULT '',
+      industry TEXT DEFAULT '',
+      website TEXT DEFAULT '',
+      logo_url TEXT DEFAULT '',
+      brand_colors TEXT DEFAULT '{}',
+      brand_fonts TEXT DEFAULT '{}',
+      voice_guidelines TEXT DEFAULT '',
+      package TEXT DEFAULT '',
+      hosting_provider TEXT DEFAULT '',
+      domain_registrar TEXT DEFAULT '',
+      domain_expiry TEXT DEFAULT '',
+      ssl_expiry TEXT DEFAULT '',
+      mrr REAL DEFAULT 0,
+      status TEXT DEFAULT 'active',
+      access_token TEXT UNIQUE,
+      welcome_sent INTEGER DEFAULT 0,
+      created_at TEXT DEFAULT (datetime('now')),
+      updated_at TEXT DEFAULT (datetime('now'))
+    );
+    CREATE INDEX IF NOT EXISTS idx_portal_clients_email ON portal_clients(email);
+    CREATE INDEX IF NOT EXISTS idx_portal_clients_token ON portal_clients(access_token);
+
+    CREATE TABLE IF NOT EXISTS portal_magic_links (
+      token TEXT PRIMARY KEY,
+      client_id TEXT NOT NULL,
+      expires_at TEXT NOT NULL,
+      consumed_at TEXT DEFAULT '',
+      created_at TEXT DEFAULT (datetime('now'))
+    );
+
+    CREATE TABLE IF NOT EXISTS portal_tickets (
+      id TEXT PRIMARY KEY,
+      client_id TEXT NOT NULL,
+      subject TEXT NOT NULL,
+      description TEXT DEFAULT '',
+      priority TEXT DEFAULT 'medium',
+      category TEXT DEFAULT 'general',
+      status TEXT DEFAULT 'open',
+      assignee_email TEXT DEFAULT '',
+      ai_summary TEXT DEFAULT '',
+      satisfaction_rating INTEGER DEFAULT 0,
+      created_at TEXT DEFAULT (datetime('now')),
+      updated_at TEXT DEFAULT (datetime('now')),
+      closed_at TEXT DEFAULT ''
+    );
+    CREATE INDEX IF NOT EXISTS idx_portal_tickets_client ON portal_tickets(client_id);
+    CREATE INDEX IF NOT EXISTS idx_portal_tickets_status ON portal_tickets(status);
+
+    CREATE TABLE IF NOT EXISTS portal_ticket_messages (
+      id TEXT PRIMARY KEY,
+      ticket_id TEXT NOT NULL,
+      author TEXT NOT NULL,
+      author_name TEXT DEFAULT '',
+      body TEXT NOT NULL,
+      created_at TEXT DEFAULT (datetime('now'))
+    );
+    CREATE INDEX IF NOT EXISTS idx_portal_ticket_messages_ticket ON portal_ticket_messages(ticket_id);
+
+    CREATE TABLE IF NOT EXISTS portal_assets (
+      id TEXT PRIMARY KEY,
+      client_id TEXT NOT NULL,
+      name TEXT NOT NULL,
+      type TEXT DEFAULT 'file',
+      url TEXT DEFAULT '',
+      description TEXT DEFAULT '',
+      folder TEXT DEFAULT '',
+      size_bytes INTEGER DEFAULT 0,
+      mime_type TEXT DEFAULT '',
+      uploaded_by TEXT DEFAULT '',
+      created_at TEXT DEFAULT (datetime('now'))
+    );
+    CREATE INDEX IF NOT EXISTS idx_portal_assets_client ON portal_assets(client_id);
+
+    CREATE TABLE IF NOT EXISTS portal_messages (
+      id TEXT PRIMARY KEY,
+      client_id TEXT NOT NULL,
+      author TEXT NOT NULL,
+      author_name TEXT DEFAULT '',
+      body TEXT NOT NULL,
+      read INTEGER DEFAULT 0,
+      created_at TEXT DEFAULT (datetime('now'))
+    );
+    CREATE INDEX IF NOT EXISTS idx_portal_messages_client ON portal_messages(client_id);
+
+    CREATE TABLE IF NOT EXISTS portal_invoices (
+      id TEXT PRIMARY KEY,
+      client_id TEXT NOT NULL,
+      invoice_number TEXT DEFAULT '',
+      amount REAL DEFAULT 0,
+      currency TEXT DEFAULT 'BAM',
+      status TEXT DEFAULT 'pending',
+      description TEXT DEFAULT '',
+      pdf_url TEXT DEFAULT '',
+      issued TEXT DEFAULT '',
+      due TEXT DEFAULT '',
+      paid TEXT DEFAULT '',
+      created_at TEXT DEFAULT (datetime('now'))
+    );
+    CREATE INDEX IF NOT EXISTS idx_portal_invoices_client ON portal_invoices(client_id);
+
+    CREATE TABLE IF NOT EXISTS portal_maintenance_reports (
+      id TEXT PRIMARY KEY,
+      client_id TEXT NOT NULL,
+      period TEXT DEFAULT '',
+      summary TEXT DEFAULT '',
+      details TEXT DEFAULT '{}',
+      published INTEGER DEFAULT 1,
+      created_at TEXT DEFAULT (datetime('now'))
+    );
+    CREATE INDEX IF NOT EXISTS idx_portal_maint_client ON portal_maintenance_reports(client_id);
+
+    CREATE TABLE IF NOT EXISTS portal_approvals (
+      id TEXT PRIMARY KEY,
+      client_id TEXT NOT NULL,
+      title TEXT NOT NULL,
+      kind TEXT DEFAULT 'design',
+      preview_url TEXT DEFAULT '',
+      notes TEXT DEFAULT '',
+      status TEXT DEFAULT 'pending',
+      decision_notes TEXT DEFAULT '',
+      created_at TEXT DEFAULT (datetime('now')),
+      decided_at TEXT DEFAULT ''
+    );
+    CREATE INDEX IF NOT EXISTS idx_portal_approvals_client ON portal_approvals(client_id);
+
+    CREATE TABLE IF NOT EXISTS portal_proposals (
+      id TEXT PRIMARY KEY,
+      client_id TEXT NOT NULL,
+      title TEXT NOT NULL,
+      body TEXT DEFAULT '',
+      total REAL DEFAULT 0,
+      currency TEXT DEFAULT 'BAM',
+      status TEXT DEFAULT 'sent',
+      signed_at TEXT DEFAULT '',
+      signature_name TEXT DEFAULT '',
+      created_at TEXT DEFAULT (datetime('now'))
+    );
+    CREATE INDEX IF NOT EXISTS idx_portal_proposals_client ON portal_proposals(client_id);
+
+    CREATE TABLE IF NOT EXISTS portal_activity (
+      id TEXT PRIMARY KEY,
+      client_id TEXT NOT NULL,
+      kind TEXT NOT NULL,
+      message TEXT NOT NULL,
+      created_at TEXT DEFAULT (datetime('now'))
+    );
+    CREATE INDEX IF NOT EXISTS idx_portal_activity_client ON portal_activity(client_id);
+  `);
+
   // ── Public Inquiries (homepage contact form) ──
   db.exec(`
     CREATE TABLE IF NOT EXISTS inquiries (

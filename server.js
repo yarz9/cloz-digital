@@ -48,6 +48,8 @@ import { requestLoggerMiddleware, errorLoggerMiddleware } from './middleware/req
 import activityLogRoutes from './routes/activityLogs.js';
 import publicInquiryRoutes from './routes/publicInquiry.js';
 import marketingRoutes from './routes/marketing.js';
+import portalRoutes from './routes/portal.js';
+import portalAdminRoutes from './routes/portalAdmin.js';
 import rateLimit from 'express-rate-limit';
 
 const app = express();
@@ -99,6 +101,8 @@ app.use('/api/mail/accounts', apiLimiter, mailAccountRoutes);
 app.use('/api/mail', apiLimiter, mailRoutes);
 app.use('/api/activity-logs', apiLimiter, activityLogRoutes);
 app.use('/api/marketing', apiLimiter, marketingRoutes);
+app.use('/api/portal', apiLimiter, portalRoutes);
+app.use('/api/portal-admin', apiLimiter, portalAdminRoutes);
 
 // ── Public inquiry endpoint: stricter rate limit to deter abuse ──
 const inquiryLimiter = rateLimit({
