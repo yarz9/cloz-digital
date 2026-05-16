@@ -54,6 +54,7 @@ import operationsRoutes from './routes/operations.js';
 import legalRoutes from './routes/legal.js';
 import { seedOps } from './database/seedOps.js';
 import rateLimit from 'express-rate-limit';
+import { APP_URL, REDIRECT_HOSTS } from './config/urls.js';
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -63,6 +64,22 @@ app.use(helmet({ contentSecurityPolicy: false }));
 app.use(cors());
 app.use(express.json({ limit: '1mb' }));
 app.use(cookieParser());
+
+// Trust the Railway proxy so req.protocol + req.hostname reflect the
+// real client request, not the internal load balancer.
+app.set('trust proxy', 1);
+
+// ── Apex domain redirect ──
+// Catches the www subdomain (and any host registered in REDIRECT_HOSTS)
+// and 301s to the canonical apex. Prevents DNS_PROBE_FINISHED_NXDOMAIN
+// style failures when users hit an unregistered subdomain.
+app.use((req, res, next) => {
+  const host = (req.hostname || '').toLowerCase();
+  if (REDIRECT_HOSTS.has(host)) {
+    return res.redirect(301, `${APP_URL}${req.originalUrl}`);
+  }
+  next();
+});
 
 // ── Request logging middleware ──
 app.use(requestLoggerMiddleware);
@@ -176,6 +193,17 @@ process.on('unhandledRejection', (reason) => {
     seedDefaults(db);
     seedMailAccounts(db);
     seedOps(db);
+
+    // Invalidate any portal magic links issued before the canonical-URL fix.
+    // Those emails contained verify URLs on the unregistered subdomain and
+    // fail DNS resolution. A fresh sign-in request will issue a new working link.
+    try {
+      const cutoff = '2026-05-16T00:00:00';
+      const result = db.prepare(`UPDATE portal_magic_links SET consumed_at = datetime('now') WHERE consumed_at = '' AND created_at < ?`).run(cutoff);
+      if (result.changes > 0) {
+        console.log(`[boot] Invalidated ${result.changes} pre-fix portal magic link(s)`);
+      }
+    } catch {}
 
     // Start mail background workers
     startSyncWorker();

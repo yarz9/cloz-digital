@@ -8,7 +8,7 @@ import { getDb } from '../database/init.js';
 import { getActiveProvider } from '../providers/index.js';
 import { sendViaResend, isResendConfigured } from '../services/mailService.js';
 import { logInfo, logError, extractRequestContext } from '../services/logger.js';
-import { APP_URL } from '../config/urls.js';
+import { buildUrl } from '../config/urls.js';
 
 const router = Router();
 
@@ -70,8 +70,7 @@ router.post('/auth/request', async (req, res) => {
     db.prepare(`INSERT INTO portal_magic_links (token, client_id, expires_at) VALUES (?,?,?)`)
       .run(token, client.id, expires);
 
-    const baseUrl = APP_URL;
-    const magicUrl = `${baseUrl}/portal/verify?token=${token}`;
+    const magicUrl = buildUrl(`/portal/verify?token=${encodeURIComponent(token)}`);
 
     if (isResendConfigured()) {
       try {
@@ -243,7 +242,7 @@ router.post('/tickets', async (req, res) => {
   // Notify internal team (non-blocking)
   if (isResendConfigured()) {
     try {
-      const baseUrl = APP_URL;
+      const crmLink = buildUrl('/management/portal-clients');
       await sendViaResend({
         from: process.env.PORTAL_FROM || 'Cloz Digital <general@cloz.digital>',
         to: (process.env.PORTAL_INTERNAL_TO || 'general@cloz.digital,anes@cloz.digital').split(',').map(s => s.trim()),
@@ -256,9 +255,9 @@ router.post('/tickets', async (req, res) => {
             <h3 style="margin:0 0 12px;color:#F5F5F7;font-size:16px;">${escapeHtml(subject)}</h3>
             <p style="margin:0;color:#A1A1AA;font-size:13px;white-space:pre-wrap;line-height:1.6;">${escapeHtml(description)}</p>
           </div>
-          <a href="${baseUrl}/management/portal-clients" style="display:inline-block;background:#5E8DB5;color:#fff;padding:10px 20px;border-radius:6px;text-decoration:none;font-size:13px;font-weight:600;">Open in CRM</a>
+          <a href="${crmLink}" style="display:inline-block;background:#5E8DB5;color:#fff;padding:10px 20px;border-radius:6px;text-decoration:none;font-size:13px;font-weight:600;">Open in CRM</a>
         </div>`,
-        text: `New ticket from ${client.business_name} (${client.email})\nPriority: ${priority || 'medium'}\nCategory: ${category || 'general'}\nSubject: ${subject}\n\n${description}\n\nOpen: ${baseUrl}/management/portal-clients`,
+        text: `New ticket from ${client.business_name} (${client.email})\nPriority: ${priority || 'medium'}\nCategory: ${category || 'general'}\nSubject: ${subject}\n\n${description}\n\nOpen: ${crmLink}`,
       });
     } catch (e) {
       logError(`Ticket notification failed: ${e.message}`);

@@ -6,7 +6,7 @@ import { getDb } from '../database/init.js';
 import { getActiveProvider } from '../providers/index.js';
 import { sendViaResend, isResendConfigured } from '../services/mailService.js';
 import { logInfo, logError } from '../services/logger.js';
-import { APP_URL } from '../config/urls.js';
+import { buildUrl } from '../config/urls.js';
 
 const router = Router();
 
@@ -216,7 +216,7 @@ router.post('/privacy-requests', async (req, res) => {
         to: (process.env.PORTAL_INTERNAL_TO || 'general@cloz.digital').split(',').map(s => s.trim()),
         replyTo: email,
         subject: `New ${kind} privacy request from ${email}`,
-        text: `Privacy request received\n\nType: ${kind}\nFrom: ${name || '(no name)'} <${email}>\n\nMessage:\n${message || '(none)'}\n\nView all: ${APP_URL}/management/legal\n\nWe must respond within 30 days.`,
+        text: `Privacy request received\n\nType: ${kind}\nFrom: ${name || '(no name)'} <${email}>\n\nMessage:\n${message || '(none)'}\n\nView all: ${buildUrl('/management/legal')}\n\nWe must respond within 30 days.`,
         html: `<div style="font-family:Inter,sans-serif;max-width:560px;margin:0 auto;padding:24px;background:#0B0B0D;color:#F5F5F7;">
           <h2 style="margin:0 0 4px;">Privacy Request</h2>
           <p style="margin:0;color:#A1A1AA;font-size:13px;">Type: ${kind} &middot; From: ${escapeHtml(email)}</p>

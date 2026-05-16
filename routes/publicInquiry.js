@@ -8,7 +8,7 @@ import { getDb } from '../database/init.js';
 import { getActiveProvider } from '../providers/index.js';
 import { sendViaResend, isResendConfigured } from '../services/mailService.js';
 import { log as activityLog, logInfo, logError, extractRequestContext } from '../services/logger.js';
-import { APP_URL } from '../config/urls.js';
+import { buildUrl } from '../config/urls.js';
 
 const router = Router();
 
@@ -135,7 +135,7 @@ Be honest, specific, and concise.`;
 
 function renderInternalNotification(inquiry, analysis) {
   const subject = `New Website Inquiry — ${inquiry.business_name || inquiry.name}`;
-  const baseUrl = APP_URL;
+  const inquiryCrmLink = buildUrl('/management/inquiries');
 
   const html = `
 <!DOCTYPE html>
@@ -175,7 +175,7 @@ function renderInternalNotification(inquiry, analysis) {
     </div>
 
     <div style="margin-top:24px;text-align:center;">
-      <a href="${baseUrl}/management/inquiries" style="display:inline-block;background:#5E8DB5;color:#FFFFFF;padding:12px 24px;border-radius:6px;text-decoration:none;font-size:13px;font-weight:600;">Open in CRM →</a>
+      <a href="${inquiryCrmLink}" style="display:inline-block;background:#5E8DB5;color:#FFFFFF;padding:12px 24px;border-radius:6px;text-decoration:none;font-size:13px;font-weight:600;">Open in CRM →</a>
     </div>
 
     <div style="margin-top:32px;padding-top:20px;border-top:1px solid rgba(255,255,255,0.08);font-size:11px;color:#52525B;">
@@ -197,7 +197,7 @@ function renderInternalNotification(inquiry, analysis) {
     `Message:`,
     inquiry.message,
     ``,
-    `Open in CRM: ${baseUrl}/management/inquiries`,
+    `Open in CRM: ${inquiryCrmLink}`,
     ``,
     `Submitted ${new Date(inquiry.created_at).toLocaleString()}`,
   ].filter(Boolean).join('\n');
