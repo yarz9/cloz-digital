@@ -106,7 +106,7 @@ function AddClientModal({ open, onClose, onSubmit }) {
       <form onSubmit={handleSubmit} className="space-y-4">
         <SuccessBanner message={success} />
         <Field label="Business Name" required>
-          <Input value={form.name} onChange={e => set('name', e.target.value)} placeholder="e.g. Brava Interiors" />
+          <Input value={form.name} onChange={e => set('name', e.target.value)} placeholder="Business or client name" />
         </Field>
         <div className="grid grid-cols-2 gap-4">
           <Field label="Contact Person" required><Input value={form.contact} onChange={e => set('contact', e.target.value)} placeholder="Full name" /></Field>

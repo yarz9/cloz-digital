@@ -129,7 +129,7 @@ function AddCompetitorModal({ open, onClose, onSubmit }) {
         <SuccessBanner message={success} />
         <div className="grid grid-cols-2 gap-4">
           <Field label="Company Name" required>
-            <Input value={form.name} onChange={e => set('name', e.target.value)} placeholder="e.g. WebPro Sarajevo" />
+            <Input value={form.name} onChange={e => set('name', e.target.value)} placeholder="Competitor name" />
           </Field>
           <Field label="Website">
             <Input value={form.url} onChange={e => set('url', e.target.value)} placeholder="e.g. webpro.ba" />

@@ -143,7 +143,7 @@ export default function ReviewLauncher({ onReviewComplete }) {
               type="text"
               value={businessName}
               onChange={e => setBusinessName(e.target.value)}
-              placeholder="e.g. Sarajevo Dental Clinic"
+              placeholder="Business name to audit"
               className="w-full bg-elevated border border-border rounded-md px-3 py-2 text-[13px] placeholder:text-text-tertiary focus:border-accent focus:outline-none"
               disabled={loading}
               list="entity-names"

@@ -134,7 +134,7 @@ function AddDealModal({ open, onClose, onSubmit }) {
       <form onSubmit={handleSubmit} className="space-y-4">
         <SuccessBanner message={success} />
         <Field label="Business Name" required>
-          <Input value={form.name} onChange={e => set('name', e.target.value)} placeholder="e.g. Sarajevo Dental Clinic" />
+          <Input value={form.name} onChange={e => set('name', e.target.value)} placeholder="Business name" />
         </Field>
         <div className="grid grid-cols-2 gap-4">
           <Field label="Package">
