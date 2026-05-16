@@ -53,6 +53,8 @@ import portalAdminRoutes from './routes/portalAdmin.js';
 import operationsRoutes from './routes/operations.js';
 import legalRoutes from './routes/legal.js';
 import { seedOps } from './database/seedOps.js';
+import { logStorageInfo } from './database/storageInfo.js';
+import adminDataRoutes from './routes/adminData.js';
 import rateLimit from 'express-rate-limit';
 import { APP_URL, REDIRECT_HOSTS } from './config/urls.js';
 
@@ -121,6 +123,7 @@ app.use('/api/mail/accounts', apiLimiter, mailAccountRoutes);
 app.use('/api/mail', apiLimiter, mailRoutes);
 app.use('/api/activity-logs', apiLimiter, activityLogRoutes);
 app.use('/api/marketing', apiLimiter, marketingRoutes);
+app.use('/api/admin/data', apiLimiter, adminDataRoutes);
 app.use('/api/portal', apiLimiter, portalRoutes);
 app.use('/api/portal-admin', apiLimiter, portalAdminRoutes);
 app.use('/api/operations', apiLimiter, operationsRoutes);
@@ -225,7 +228,9 @@ process.on('unhandledRejection', (reason) => {
       console.log(`  → App:      http://localhost:${PORT}/`);
       console.log(`  → Admin:    http://localhost:${PORT}/admin`);
       console.log(`  → Health:   http://localhost:${PORT}/health`);
-      console.log(`  → API:      http://localhost:${PORT}/api/health\n`);
+      console.log(`  → API:      http://localhost:${PORT}/api/health`);
+      logStorageInfo();
+      console.log('');
     });
   } catch (err) {
     console.error('\n  ✗ Failed to start Cloz Digital:', err.message);

@@ -99,10 +99,25 @@ export function Dashboard() {
   const [error, setError] = useState('')
 
   useEffect(() => {
-    portal.dashboard().then(d => { setData(d); setLoading(false) }).catch(e => { setError(e.message); setLoading(false) })
+    portal.dashboard()
+      .then(d => { setData(d || {}); setLoading(false) })
+      .catch(e => { setError(e?.message || 'Could not load your dashboard.'); setLoading(false) })
   }, [])
 
-  if (loading) return <div className="p-12 flex justify-center"><Loader2 size={22} className="animate-spin text-accent" /></div>
+  if (loading) {
+    return (
+      <div className="p-12 flex flex-col items-center justify-center gap-3">
+        <Loader2 size={22} className="animate-spin text-accent" />
+        <p className="text-[12px] text-text-tertiary">Loading your dashboard…</p>
+      </div>
+    )
+  }
+
+  // Default everything — never reference a possibly-undefined collection
+  const summary = (data && data.summary) || {}
+  const recentTickets = Array.isArray(data?.recent_tickets) ? data.recent_tickets : []
+  const proposals = Array.isArray(data?.proposals) ? data.proposals : []
+  const activity = Array.isArray(data?.activity) ? data.activity : []
 
   return (
     <div className="p-6 max-w-[1100px] mx-auto">
@@ -130,10 +145,10 @@ export function Dashboard() {
 
       {/* Summary cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-5">
-        <StatCard icon={MessageSquare} label="Open Tickets" value={data?.summary?.open_tickets || 0} to="/portal/support" color={data?.summary?.open_tickets > 0 ? 'text-warning' : 'text-success'} />
-        <StatCard icon={Receipt} label="Unpaid Invoices" value={data?.summary?.unpaid_invoices || 0} sub={data?.summary?.unpaid_total ? `${data.summary.unpaid_total} BAM` : ''} to="/portal/billing" color={data?.summary?.unpaid_invoices > 0 ? 'text-warning' : 'text-success'} />
-        <StatCard icon={FileSignature} label="Pending Approvals" value={data?.summary?.pending_approvals || 0} to="/portal/approvals" color={data?.summary?.pending_approvals > 0 ? 'text-accent' : 'text-success'} />
-        <StatCard icon={FolderOpen} label="Brand Assets" value={data?.summary?.assets || 0} to="/portal/assets" />
+        <StatCard icon={MessageSquare} label="Open Tickets" value={summary.open_tickets || 0} to="/portal/support" color={(summary.open_tickets || 0) > 0 ? 'text-warning' : 'text-success'} />
+        <StatCard icon={Receipt} label="Unpaid Invoices" value={summary.unpaid_invoices || 0} sub={summary.unpaid_total ? `${summary.unpaid_total} BAM` : ''} to="/portal/billing" color={(summary.unpaid_invoices || 0) > 0 ? 'text-warning' : 'text-success'} />
+        <StatCard icon={FileSignature} label="Pending Approvals" value={summary.pending_approvals || 0} to="/portal/approvals" color={(summary.pending_approvals || 0) > 0 ? 'text-accent' : 'text-success'} />
+        <StatCard icon={FolderOpen} label="Brand Assets" value={summary.assets || 0} to="/portal/assets" />
       </div>
 
       {/* Hosting status */}
@@ -147,8 +162,8 @@ export function Dashboard() {
                 {client.website}<ExternalLink size={11} />
               </a>
               <div className="grid grid-cols-2 gap-3 mt-3 pt-3 border-t border-border">
-                <DaysLeft label="Domain expires" days={data?.summary?.domain_days_left} />
-                <DaysLeft label="SSL expires" days={data?.summary?.ssl_days_left} />
+                <DaysLeft label="Domain expires" days={summary.domain_days_left} />
+                <DaysLeft label="SSL expires" days={summary.ssl_days_left} />
               </div>
             </>
           ) : (
@@ -158,21 +173,21 @@ export function Dashboard() {
 
         <div className="bg-surface border border-border rounded-lg p-5">
           <h2 className="font-display font-semibold text-[14px] mb-3 flex items-center gap-2"><MessageSquare size={13} className="text-accent" />Recent Tickets</h2>
-          {data?.recent_tickets?.length === 0 ? (
+          {recentTickets.length === 0 ? (
             <p className="text-[12px] text-text-tertiary py-4">No tickets yet. <Link to="/portal/support" className="text-accent">Open one →</Link></p>
           ) : (
             <div className="space-y-2">
-              {data?.recent_tickets?.slice(0, 4).map(t => (
+              {recentTickets.slice(0, 4).map(t => (
                 <Link key={t.id} to={`/portal/support/${t.id}`}
                   className="block bg-elevated hover:bg-raised rounded-md px-3 py-2 transition-colors">
                   <div className="flex items-center justify-between gap-2">
-                    <span className="text-[12px] font-medium truncate">{t.subject}</span>
+                    <span className="text-[12px] font-medium truncate">{t.subject || 'Untitled ticket'}</span>
                     <span className={`text-[9px] uppercase tracking-wider px-1.5 py-0.5 rounded shrink-0 ${
                       t.status === 'open' ? 'bg-accent-muted text-accent' :
                       t.status === 'in_progress' ? 'bg-warning/10 text-warning' :
                       t.status === 'resolved' ? 'bg-success/10 text-success' :
                       'bg-elevated text-text-tertiary'
-                    }`}>{t.status.replace('_', ' ')}</span>
+                    }`}>{(t.status || 'open').replace('_', ' ')}</span>
                   </div>
                 </Link>
               ))}
@@ -182,16 +197,16 @@ export function Dashboard() {
       </div>
 
       {/* Activity */}
-      {data?.activity?.length > 0 && (
+      {activity.length > 0 && (
         <div className="bg-surface border border-border rounded-lg p-5">
           <h2 className="font-display font-semibold text-[14px] mb-3">Recent Activity</h2>
           <div className="space-y-2.5">
-            {data.activity.slice(0, 8).map(a => (
-              <div key={a.id} className="flex items-start gap-3">
+            {activity.slice(0, 8).map(a => (
+              <div key={a.id || Math.random()} className="flex items-start gap-3">
                 <div className="w-1.5 h-1.5 rounded-full bg-accent mt-1.5 shrink-0" />
                 <div className="flex-1 min-w-0">
-                  <p className="text-[12px] text-text-secondary">{a.message}</p>
-                  <span className="text-[10px] text-text-tertiary">{new Date(a.created_at).toLocaleString()}</span>
+                  <p className="text-[12px] text-text-secondary">{a.message || a.text || '—'}</p>
+                  <span className="text-[10px] text-text-tertiary">{a.created_at ? new Date(a.created_at).toLocaleString() : ''}</span>
                 </div>
               </div>
             ))}
@@ -244,7 +259,7 @@ export function Support() {
 
   const load = () => {
     setLoading(true)
-    portal.tickets().then(({ tickets }) => { setTickets(tickets); setLoading(false) }).catch(e => { setError(e.message); setLoading(false) })
+    portal.tickets().then(({ tickets = [] }) => { setTickets(tickets); setLoading(false) }).catch(e => { setError(e.message); setLoading(false) })
   }
   useEffect(() => { load() }, [])
 
@@ -362,7 +377,7 @@ export function SupportDetail() {
   const [error, setError] = useState('')
 
   const load = () => {
-    portal.ticket(id).then(({ ticket, messages }) => {
+    portal.ticket(id).then(({ ticket = null, messages = [] }) => {
       setTicket(ticket); setMessages(messages); setLoading(false)
     }).catch(e => { setError(e.message); setLoading(false) })
   }
@@ -491,7 +506,7 @@ export function Assets() {
 
   const load = () => {
     setLoading(true)
-    portal.assets(folder).then(({ assets, folders }) => {
+    portal.assets(folder).then(({ assets = [], folders = [] }) => {
       setAssets(assets); setFolders(folders); setLoading(false)
     }).catch(e => { setError(e.message); setLoading(false) })
   }
@@ -618,12 +633,17 @@ export function Billing() {
   const [error, setError] = useState('')
 
   useEffect(() => {
-    portal.billing().then(d => { setData(d); setLoading(false) }).catch(e => { setError(e.message); setLoading(false) })
+    portal.billing()
+      .then(d => { setData(d || {}); setLoading(false) })
+      .catch(e => { setError(e?.message || 'Could not load billing.'); setLoading(false) })
   }, [])
 
   if (loading) return <div className="p-12 flex justify-center"><Loader2 size={20} className="animate-spin text-accent" /></div>
 
   const fmt = (n, c = 'BAM') => `${(n || 0).toLocaleString()} ${c}`
+
+  const summary = data?.summary || {}
+  const invoices = Array.isArray(data?.invoices) ? data.invoices : []
 
   return (
     <div className="p-6 max-w-[1100px] mx-auto">
@@ -631,10 +651,10 @@ export function Billing() {
       <ErrorBox message={error} onDismiss={() => setError('')} />
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-5">
-        <StatCard icon={Receipt} label="Unpaid Invoices" value={data?.summary?.unpaid || 0} color={data?.summary?.unpaid > 0 ? 'text-warning' : 'text-success'} />
-        <StatCard icon={Receipt} label="Outstanding" value={fmt(data?.summary?.unpaid_total)} color={data?.summary?.unpaid_total > 0 ? 'text-warning' : 'text-success'} />
-        <StatCard icon={Receipt} label="Paid This Year" value={fmt(data?.summary?.paid_total)} color="text-success" />
-        <StatCard icon={Receipt} label="MRR" value={fmt(data?.summary?.mrr)} color="text-accent" />
+        <StatCard icon={Receipt} label="Unpaid Invoices" value={summary.unpaid || 0} color={(summary.unpaid || 0) > 0 ? 'text-warning' : 'text-success'} />
+        <StatCard icon={Receipt} label="Outstanding" value={fmt(summary.unpaid_total)} color={(summary.unpaid_total || 0) > 0 ? 'text-warning' : 'text-success'} />
+        <StatCard icon={Receipt} label="Paid This Year" value={fmt(summary.paid_total)} color="text-success" />
+        <StatCard icon={Receipt} label="MRR" value={fmt(summary.mrr)} color="text-accent" />
       </div>
 
       {data?.package && (
@@ -644,7 +664,7 @@ export function Billing() {
         </div>
       )}
 
-      {data?.invoices?.length === 0 ? (
+      {invoices.length === 0 ? (
         <Empty icon={Receipt} title="No invoices yet" description="When invoices are issued, they appear here for download and review." />
       ) : (
         <div className="bg-surface border border-border rounded-lg overflow-x-auto">
@@ -657,9 +677,9 @@ export function Billing() {
               </tr>
             </thead>
             <tbody>
-              {data?.invoices?.map(inv => (
+              {invoices.map(inv => (
                 <tr key={inv.id} className="border-b border-border/50 hover:bg-elevated/50">
-                  <td className="px-4 py-3 text-[12px] font-mono">{inv.invoice_number || inv.id.slice(0, 8)}</td>
+                  <td className="px-4 py-3 text-[12px] font-mono">{inv.invoice_number || (inv.id || '').slice(0, 8)}</td>
                   <td className="px-4 py-3 text-[12px] text-text-secondary">{inv.description || '—'}</td>
                   <td className="px-4 py-3 text-[11px] text-text-tertiary">{inv.issued || '—'}</td>
                   <td className="px-4 py-3 text-[11px] text-text-tertiary">{inv.due || '—'}</td>
@@ -696,7 +716,7 @@ export function Hosting() {
   const [data, setData] = useState(null)
   const [loading, setLoading] = useState(true)
 
-  useEffect(() => { portal.hosting().then(d => { setData(d); setLoading(false) }).catch(() => setLoading(false)) }, [])
+  useEffect(() => { portal.hosting().then(d => { setData(d || {}); setLoading(false) }).catch(() => { setData({}); setLoading(false) }) }, [])
 
   if (loading) return <div className="p-12 flex justify-center"><Loader2 size={20} className="animate-spin text-accent" /></div>
 
@@ -769,7 +789,7 @@ export function Messages() {
   const endRef = useRef(null)
 
   const load = () => {
-    portal.messages().then(({ messages }) => {
+    portal.messages().then(({ messages = [] }) => {
       setMessages(messages); setLoading(false)
       setTimeout(() => endRef.current?.scrollIntoView({ behavior: 'smooth' }), 50)
     }).catch(e => { setError(e.message); setLoading(false) })
@@ -840,7 +860,7 @@ export function Approvals() {
   const [decisionNotes, setDecisionNotes] = useState({})
 
   const load = () => {
-    portal.approvals().then(({ approvals }) => { setApprovals(approvals); setLoading(false) }).catch(e => { setError(e.message); setLoading(false) })
+    portal.approvals().then(({ approvals = [] }) => { setApprovals(approvals); setLoading(false) }).catch(e => { setError(e.message); setLoading(false) })
   }
   useEffect(() => { load() }, [])
 
@@ -929,7 +949,7 @@ export function Proposals() {
   const [proposals, setProposals] = useState([])
   const [loading, setLoading] = useState(true)
 
-  useEffect(() => { portal.proposals().then(({ proposals }) => { setProposals(proposals); setLoading(false) }).catch(() => setLoading(false)) }, [])
+  useEffect(() => { portal.proposals().then(({ proposals = [] }) => { setProposals(proposals); setLoading(false) }).catch(() => setLoading(false)) }, [])
 
   if (loading) return <div className="p-12 flex justify-center"><Loader2 size={20} className="animate-spin text-accent" /></div>
 
@@ -970,7 +990,7 @@ export function ProposalDetail() {
   const [error, setError] = useState('')
 
   const load = () => {
-    portal.proposal(id).then(({ proposal }) => setProposal(proposal)).catch(e => setError(e.message))
+    portal.proposal(id).then(({ proposal = null }) => setProposal(proposal)).catch(e => setError(e.message))
   }
   useEffect(() => { load() }, [id])
 
@@ -1039,7 +1059,7 @@ export function Maintenance() {
   const [reports, setReports] = useState([])
   const [loading, setLoading] = useState(true)
 
-  useEffect(() => { portal.maintenance().then(({ reports }) => { setReports(reports); setLoading(false) }).catch(() => setLoading(false)) }, [])
+  useEffect(() => { portal.maintenance().then(({ reports = [] }) => { setReports(reports); setLoading(false) }).catch(() => setLoading(false)) }, [])
 
   if (loading) return <div className="p-12 flex justify-center"><Loader2 size={20} className="animate-spin text-accent" /></div>
 
@@ -1239,7 +1259,7 @@ export function Knowledge() {
   const [articles, setArticles] = useState([])
   const [loading, setLoading] = useState(true)
 
-  useEffect(() => { portal.knowledge().then(({ articles }) => { setArticles(articles); setLoading(false) }).catch(() => setLoading(false)) }, [])
+  useEffect(() => { portal.knowledge().then(({ articles = [] }) => { setArticles(articles); setLoading(false) }).catch(() => setLoading(false)) }, [])
 
   if (loading) return <div className="p-12 flex justify-center"><Loader2 size={20} className="animate-spin text-accent" /></div>
 
