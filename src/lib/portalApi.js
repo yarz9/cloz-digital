@@ -5,6 +5,7 @@
 
 const TOKEN_KEY = 'cloz_portal_token_v1'
 const CLIENT_KEY = 'cloz_portal_client_v1'
+const DEFAULT_TIMEOUT_MS = 20000
 
 export function getToken() {
   try { return localStorage.getItem(TOKEN_KEY) || '' } catch { return '' }
@@ -27,14 +28,48 @@ export function clearPortalSession() {
   setCachedClient(null)
 }
 
+function withTimeout(promise, ms) {
+  let timeoutId
+  const timeout = new Promise((_, reject) => {
+    timeoutId = setTimeout(() => {
+      reject(new Error('Request timed out. Check your connection and try again.'))
+    }, ms)
+  })
+  return Promise.race([promise, timeout]).finally(() => clearTimeout(timeoutId))
+}
+
 async function req(path, options = {}) {
   const headers = { 'Content-Type': 'application/json', ...(options.headers || {}) }
   const token = getToken()
   if (token) headers.Authorization = `Bearer ${token}`
-  const res = await fetch(`/api/portal${path}`, { ...options, headers })
-  const json = await res.json().catch(() => ({ error: 'Network error' }))
-  if (!res.ok) throw new Error(json.error || `Server returned ${res.status}`)
-  return json
+
+  let res
+  try {
+    res = await withTimeout(fetch(`/api/portal${path}`, { ...options, headers }), options.timeout || DEFAULT_TIMEOUT_MS)
+  } catch (e) {
+    // Network / abort / timeout
+    throw new Error(e?.message || 'Network error. Please check your connection.')
+  }
+
+  // Auth failures — wipe session so the layout can redirect cleanly
+  if (res.status === 401) {
+    clearPortalSession()
+    const err = new Error('Your session expired. Please sign in again.')
+    err.status = 401
+    throw err
+  }
+
+  let json = null
+  try { json = await res.json() } catch { /* leave json null */ }
+
+  if (!res.ok) {
+    const msg = json?.error || `Server returned ${res.status}`
+    const err = new Error(msg)
+    err.status = res.status
+    throw err
+  }
+
+  return json ?? {}
 }
 
 export const portal = {
@@ -75,7 +110,7 @@ export const portal = {
   signProposal:     (id, signature_name) => req(`/proposals/${id}/sign`, { method: 'POST', body: JSON.stringify({ signature_name }) }),
 
   // AI assistant
-  aiAssistant:      (messages) => req('/ai-assistant', { method: 'POST', body: JSON.stringify({ messages }) }),
+  aiAssistant:      (messages) => req('/ai-assistant', { method: 'POST', body: JSON.stringify({ messages }), timeout: 60000 }),
 
   // Knowledge base
   knowledge:        () => req('/knowledge'),

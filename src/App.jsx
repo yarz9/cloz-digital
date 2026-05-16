@@ -66,6 +66,7 @@ import PortalClients from './features/management/PortalClients'
 import Operations from './features/operations/Operations'
 import Legal from './features/legal/Legal'
 import PortalLayout from './features/portal/PortalLayout'
+import ErrorBoundary from './components/ErrorBoundary'
 import PortalLogin from './features/portal/PortalLogin'
 import {
   Dashboard as PortalDashboard, Support, SupportDetail, Assets,
@@ -184,9 +185,9 @@ export default function App() {
       </Route>
 
       {/* ═══ Client Portal ═══ */}
-      <Route path="/portal/login" element={<PortalLogin />} />
-      <Route path="/portal/verify" element={<PortalLogin />} />
-      <Route path="/portal" element={<PortalLayout />}>
+      <Route path="/portal/login" element={<ErrorBoundary><PortalLogin /></ErrorBoundary>} />
+      <Route path="/portal/verify" element={<ErrorBoundary><PortalLogin /></ErrorBoundary>} />
+      <Route path="/portal" element={<ErrorBoundary fallbackHref="/portal/login"><PortalLayout /></ErrorBoundary>}>
         <Route index element={<Navigate to="/portal/dashboard" replace />} />
         <Route path="dashboard" element={<PortalDashboard />} />
         <Route path="support" element={<Support />} />

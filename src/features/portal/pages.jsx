@@ -12,8 +12,35 @@ import { portal } from '@/lib/portalApi'
 //  SHARED HELPERS
 // ══════════════════════════════════════════════════════════════
 
+// Always returns a safe object — never throws on destructure
 function useClient() {
-  return useOutletContext()
+  const ctx = useOutletContext() || {}
+  const fallback = {
+    id: '',
+    business_name: 'Client',
+    contact_name: '',
+    email: '',
+    phone: '',
+    industry: '',
+    website: '',
+    logo_url: '',
+    brand_colors: {},
+    brand_fonts: {},
+    voice_guidelines: '',
+    package: '',
+    hosting_provider: '',
+    domain_registrar: '',
+    domain_expiry: '',
+    ssl_expiry: '',
+    status: 'active',
+  }
+  return { client: { ...fallback, ...(ctx.client || {}) }, setClient: ctx.setClient || (() => {}) }
+}
+
+// Safe first-name extraction
+function firstNameOf(client) {
+  const n = client?.contact_name || client?.business_name || 'there'
+  return String(n).split(' ')[0]
 }
 
 function Header({ title, subtitle, action }) {
@@ -89,11 +116,11 @@ export function Dashboard() {
           ) : (
             <div className="w-14 h-14 rounded-lg flex items-center justify-center text-[22px] font-display font-bold text-white shrink-0"
               style={{ background: client.brand_colors?.accent || '#5E8DB5' }}>
-              {client.business_name?.charAt(0).toUpperCase() || 'C'}
+              {(client.business_name || 'C').charAt(0).toUpperCase()}
             </div>
           )}
           <div>
-            <h1 className="font-display font-bold text-[22px]">Welcome back, {(client.contact_name || client.business_name).split(' ')[0]}.</h1>
+            <h1 className="font-display font-bold text-[22px]">Welcome back, {firstNameOf(client)}.</h1>
             <p className="text-[12px] text-text-secondary mt-1">
               {new Date().toLocaleDateString('en-US', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
             </p>
@@ -1046,7 +1073,7 @@ export function Maintenance() {
 export function Assistant() {
   const { client } = useClient()
   const [messages, setMessages] = useState([
-    { role: 'assistant', content: `Hi ${(client.contact_name || client.business_name).split(' ')[0]} — I'm your AI assistant. I know your brand and can help you with content ideas, explain anything technical, or summarize updates. What's on your mind?` },
+    { role: 'assistant', content: `Hi ${firstNameOf(client)} — I'm your AI assistant. I know your brand and can help you with content ideas, explain anything technical, or summarize updates. What's on your mind?` },
   ])
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)

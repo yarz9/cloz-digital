@@ -1,7 +1,7 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useSearchParams, useNavigate } from 'react-router-dom'
-import { Mail, ArrowRight, Loader2, AlertCircle, CheckCircle2, Lock } from 'lucide-react'
-import { portal, setToken, setCachedClient } from '@/lib/portalApi'
+import { Mail, ArrowRight, Loader2, AlertCircle, CheckCircle2, Lock, RefreshCw } from 'lucide-react'
+import { portal, setToken, setCachedClient, clearPortalSession } from '@/lib/portalApi'
 
 // ══════════════════════════════════════════════════════════════
 //  PORTAL LOGIN — Passwordless magic-link auth
@@ -14,26 +14,39 @@ export default function PortalLogin() {
   const [step, setStep] = useState('request')  // request | sent | verifying | error
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+  const verifyRanRef = useRef(false)
 
   useEffect(() => { document.title = 'Sign in — Cloz Digital Portal' }, [])
 
-  // If a verify token is present, exchange it immediately
+  // If a verify token is present in the URL, exchange it immediately.
+  // Guarded by a ref so React 18 StrictMode double-invoke doesn't double-consume the token.
   useEffect(() => {
     const token = params.get('token')
-    if (token) {
-      setStep('verifying')
-      portal.verifyMagicLink(token)
-        .then(res => {
-          setToken(res.accessToken)
-          setCachedClient(res.client)
-          navigate('/portal/dashboard', { replace: true })
-        })
-        .catch(e => {
-          setError(e.message)
-          setStep('error')
-        })
-    }
-  }, []) // eslint-disable-line
+    if (!token || verifyRanRef.current) return
+    verifyRanRef.current = true
+
+    setStep('verifying')
+    setError('')
+
+    // Wipe any stale session before verifying the new token
+    clearPortalSession()
+
+    portal.verifyMagicLink(token)
+      .then(res => {
+        if (!res || !res.accessToken || !res.client?.id) {
+          throw new Error('The sign-in response was incomplete. Request a new link.')
+        }
+        setToken(res.accessToken)
+        setCachedClient(res.client)
+        navigate('/portal/dashboard', { replace: true })
+      })
+      .catch(e => {
+        const msg = e?.message || 'Sign-in failed.'
+        setError(msg)
+        setStep('error')
+      })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   const handleRequest = async (e) => {
     e.preventDefault()
@@ -46,10 +59,17 @@ export default function PortalLogin() {
       await portal.requestMagicLink(email.trim())
       setStep('sent')
     } catch (e) {
-      setError(e.message)
+      setError(e?.message || 'Could not send the link. Please try again.')
     } finally {
       setLoading(false)
     }
+  }
+
+  const resetToRequest = () => {
+    setStep('request')
+    setError('')
+    verifyRanRef.current = false
+    navigate('/portal/login', { replace: true })
   }
 
   return (
@@ -89,7 +109,7 @@ export default function PortalLogin() {
             </button>
 
             <p className="text-[11px] text-text-tertiary text-center leading-relaxed">
-              We'll email you a secure one-time link.<br/>
+              We'll email you a secure one-time link.<br />
               No password required.
             </p>
           </form>
@@ -126,9 +146,9 @@ export default function PortalLogin() {
             </div>
             <h2 className="font-display font-bold text-[17px] mb-2">Sign-in failed</h2>
             <p className="text-[12px] text-error mb-4">{error}</p>
-            <button onClick={() => { setStep('request'); setError(''); navigate('/portal/login', { replace: true }) }}
-              className="text-[12px] text-accent hover:text-accent-hover underline">
-              Request a new link
+            <button onClick={resetToRequest}
+              className="inline-flex items-center gap-1.5 bg-accent hover:bg-accent-hover text-white px-4 py-2 rounded-md text-[12px] font-semibold">
+              <RefreshCw size={12} />Request a new link
             </button>
           </div>
         )}
