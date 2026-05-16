@@ -5,6 +5,7 @@ import {
   Mail, Phone, Globe, Shield, Calendar, Clock, FileText, Inbox, Send,
   MessageSquare, FolderOpen, Trash2, Folder, Image as ImageIcon, FileSignature,
   Sparkles, Star, ArrowLeft, BookOpen, Palette, ExternalLink as ExtLink,
+  Receipt, Wrench, FileCheck,
 } from 'lucide-react'
 import { portal } from '@/lib/portalApi'
 
