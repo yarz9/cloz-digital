@@ -45,13 +45,15 @@ export default function ContactPage() {
   }
 
   return (
-    <div className="pt-24 pb-20 px-6">
-      <div className="max-w-[1200px] mx-auto">
+    <div className="pt-24 pb-20 px-6 section-glow">
+      <div className="relative max-w-[1200px] mx-auto">
         <div className="grid md:grid-cols-2 gap-16">
           {/* Left: Info */}
-          <div>
+          <div className="animate-fade-up">
             <span className="text-[11px] font-medium uppercase tracking-widest text-accent">{t('contact.eyebrow')}</span>
-            <h1 className="mt-3 font-display font-bold text-[40px] leading-tight">{t('contact.h1')}</h1>
+            <h1 className="mt-3 font-display font-bold text-[40px] leading-tight">
+              <span className="text-gradient">{t('contact.h1')}</span>
+            </h1>
             <p className="mt-4 text-[15px] text-text-secondary leading-relaxed">{t('contact.sub')}</p>
 
             <div className="mt-10 space-y-5">
@@ -64,7 +66,7 @@ export default function ContactPage() {
           </div>
 
           {/* Right: Form */}
-          <div>
+          <div className="animate-fade-up stagger-2">
             <div className="mb-5 flex items-center gap-2 px-3 py-2 bg-success/5 border border-success/15 rounded-md text-[12px] text-success">
               <ShieldCheck size={13} className="shrink-0" />
               <span>{t('contact.shield')}</span>
@@ -113,7 +115,7 @@ export default function ContactPage() {
                 )}
 
                 <button type="submit" disabled={loading}
-                  className="w-full bg-accent hover:bg-accent-hover disabled:opacity-60 disabled:cursor-not-allowed text-white font-medium py-3 rounded-md transition-colors text-[14px] flex items-center justify-center gap-2">
+                  className="button-premium w-full justify-center focus-ring disabled:opacity-60 disabled:cursor-not-allowed">
                   {loading ? <><Loader2 size={14} className="animate-spin" /> {t('contact.f.submitting')}</> : t('contact.f.submit')}
                 </button>
 

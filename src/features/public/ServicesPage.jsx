@@ -16,19 +16,24 @@ export default function ServicesPage() {
   ]
 
   return (
-    <div className="pt-24 pb-20 px-6">
-      <div className="max-w-[1200px] mx-auto">
-        <div className="max-w-[600px] mb-16">
+    <div className="pt-24 pb-20 px-6 section-glow">
+      <div className="relative max-w-[1200px] mx-auto">
+        <div className="max-w-[680px] mb-16 animate-fade-up">
           <span className="text-[11px] font-medium uppercase tracking-widest text-accent">{t('services.eyebrow')}</span>
-          <h1 className="mt-3 font-display font-bold text-[40px] leading-tight">{t('services.h1')}</h1>
+          <h1 className="mt-3 font-display font-bold text-[40px] leading-tight">
+            <span className="text-gradient">{t('services.h1')}</span>
+          </h1>
           <p className="mt-4 text-[15px] text-text-secondary leading-relaxed">{t('services.sub')}</p>
         </div>
 
-        <div className="space-y-6">
-          {services.map((s) => (
-            <div key={s.title} className="bg-surface border border-border rounded-lg p-8 grid md:grid-cols-2 gap-8">
+        <div className="space-y-4">
+          {services.map((s, i) => (
+            <div key={s.title}
+              className={`card-premium with-sheen grid md:grid-cols-2 gap-8 !p-8 animate-fade-up stagger-${(i % 6) + 1}`}>
               <div>
-                <s.icon size={24} className="text-accent mb-4" strokeWidth={1.5} />
+                <div className="w-11 h-11 rounded-lg bg-accent-muted flex items-center justify-center mb-4">
+                  <s.icon size={20} className="text-accent" strokeWidth={1.6} />
+                </div>
                 <h2 className="font-display font-bold text-[22px] mb-3">{s.title}</h2>
                 <p className="text-[14px] text-text-secondary leading-relaxed">{s.desc}</p>
               </div>
@@ -48,7 +53,7 @@ export default function ServicesPage() {
         </div>
 
         <div className="mt-16 text-center">
-          <a href="/contact" className="inline-flex items-center gap-2 bg-accent hover:bg-accent-hover text-white font-medium px-6 py-3 rounded-md transition-colors text-[14px]">
+          <a href="/contact" className="button-premium focus-ring">
             {t('services.cta')} <ArrowRight size={15} />
           </a>
         </div>

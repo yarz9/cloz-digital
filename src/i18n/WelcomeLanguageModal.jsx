@@ -20,7 +20,7 @@ export default function WelcomeLanguageModal() {
           style={{ background: 'radial-gradient(circle, var(--color-accent) 0%, transparent 60%)' }} />
       </div>
 
-      <div className="relative max-w-[560px] w-full bg-surface border border-border rounded-2xl p-8 md:p-10 shadow-[0_40px_120px_rgba(0,0,0,0.6)] animate-scale-in">
+      <div className="relative max-w-[560px] w-full glass-elevated rounded-2xl p-8 md:p-10 animate-scale-in">
         {/* Brand */}
         <div className="flex items-center justify-center mb-6">
           <div className="w-14 h-14 rounded-2xl bg-accent-muted flex items-center justify-center">
@@ -38,7 +38,7 @@ export default function WelcomeLanguageModal() {
 
           <h1 id="welcome-headline" className="font-display font-bold text-[28px] md:text-[34px] leading-tight tracking-tight text-text-primary">
             <span>Choose your language</span><br />
-            <span className="text-accent">Odaberite jezik</span>
+            <span className="text-gradient">Odaberite jezik</span>
           </h1>
 
           <p className="mt-4 text-[14px] text-text-secondary leading-relaxed">
@@ -80,9 +80,9 @@ export default function WelcomeLanguageModal() {
 function LangButton({ onClick, highlighted, flag, label, sub, detected, detectedLabel }) {
   return (
     <button onClick={onClick}
-      className={`group relative text-left p-5 rounded-xl border transition-all hover:translate-y-[-2px] ${
+      className={`group relative text-left p-5 rounded-xl border transition-all hover:translate-y-[-2px] hover:shadow-[var(--shadow-glow-md)] focus-ring ${
         highlighted
-          ? 'bg-accent-muted border-accent/40 hover:border-accent/60 shadow-[0_10px_40px_rgba(94,141,181,0.15)]'
+          ? 'bg-accent-muted border-accent/40 hover:border-accent/60'
           : 'bg-elevated border-border hover:border-accent/40'
       }`}>
       {detected && (

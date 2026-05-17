@@ -129,9 +129,9 @@ function Services() {
           title={t('home.services.title')}
           subtitle={t('home.services.sub')}
         />
-        <div className="mt-14 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-px bg-border rounded-xl overflow-hidden border border-border">
-          {services.map((s) => (
-            <div key={s.t} className="bg-bg p-7 hover:bg-surface transition-colors group">
+        <div className="mt-14 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+          {services.map((s, i) => (
+            <div key={s.t} className={`card-premium with-sheen animate-fade-up stagger-${(i % 6) + 1} group`}>
               <div className="w-10 h-10 rounded-lg bg-accent-muted flex items-center justify-center mb-4 group-hover:bg-accent/20 transition-colors">
                 <s.icon size={18} className="text-accent" />
               </div>
@@ -213,10 +213,8 @@ function Packages() {
                 ))}
               </ul>
               <Link to="/contact"
-                className={`block text-center py-3 rounded-md text-[13px] font-semibold transition-all ${
-                  p.highlighted
-                    ? 'bg-accent hover:bg-accent-hover text-white'
-                    : 'bg-elevated hover:bg-raised text-text-primary border border-border'
+                className={`block text-center w-full focus-ring ${
+                  p.highlighted ? 'button-premium justify-center' : 'button-premium ghost justify-center'
                 }`}>
                 {p.cta}
               </Link>
@@ -251,8 +249,8 @@ function WhyChoose() {
           subtitle={t('home.why.sub')}
         />
         <div className="mt-14 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {differentiators.map(d => (
-            <div key={d.t} className="p-6 bg-surface border border-border rounded-xl hover:border-text-tertiary transition-colors">
+          {differentiators.map((d, i) => (
+            <div key={d.t} className={`card-premium hover-lift animate-fade-up stagger-${(i % 6) + 1}`}>
               <d.icon size={18} className="text-accent mb-3" strokeWidth={1.8} />
               <h3 className="font-display font-semibold text-[15px] mb-1.5">{d.t}</h3>
               <p className="text-[13px] text-text-secondary leading-relaxed">{d.d}</p>
@@ -282,9 +280,9 @@ function Process() {
           subtitle={t('home.proc.sub')}
         />
         <div className="mt-14 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
-          {process.map((p) => (
-            <div key={p.num} className="relative p-6 bg-surface border border-border rounded-xl">
-              <span className="font-display font-bold text-[11px] text-accent tracking-wider">{p.num}</span>
+          {process.map((p, i) => (
+            <div key={p.num} className={`card-premium hover-lift animate-fade-up stagger-${i + 1}`}>
+              <span className="font-display font-bold text-[11px] text-gradient-accent tracking-wider">{p.num}</span>
               <p.icon size={18} className="text-text-secondary mt-3 mb-3" strokeWidth={1.8} />
               <h3 className="font-display font-semibold text-[14px] mb-1.5">{p.t}</h3>
               <p className="text-[12px] text-text-tertiary leading-relaxed">{p.d}</p>
@@ -355,8 +353,8 @@ function RiskReversal() {
           subtitle={t('home.risk.sub')}
         />
         <div className="mt-14 grid grid-cols-1 md:grid-cols-2 gap-4">
-          {riskReversals.map(r => (
-            <div key={r.t} className="bg-surface border border-border rounded-xl p-6 hover:border-accent/30 transition-colors">
+          {riskReversals.map((r, i) => (
+            <div key={r.t} className={`card-premium with-sheen hover-lift animate-fade-up stagger-${i + 1}`}>
               <div className="w-10 h-10 rounded-lg bg-accent-muted flex items-center justify-center mb-4">
                 <r.icon size={18} className="text-accent" />
               </div>
@@ -366,17 +364,15 @@ function RiskReversal() {
           ))}
         </div>
         <div className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-3">
-          <Link to="/contact"
-            className="inline-flex items-center gap-2 bg-accent hover:bg-accent-hover text-white px-6 py-3 rounded-md text-[13px] font-semibold transition-all hover:translate-y-[-1px]">
+          <Link to="/contact" className="button-premium focus-ring">
             {t('home.risk.ctaBook')}
             <ArrowUpRight size={13} />
           </Link>
-          <Link to="/contact"
-            className="inline-flex items-center gap-2 bg-elevated hover:bg-raised border border-border text-text-primary px-6 py-3 rounded-md text-[13px] font-medium transition-colors">
+          <Link to="/contact" className="button-premium ghost focus-ring">
             {t('home.risk.ctaReview')}
           </Link>
           <Link to="/contact"
-            className="inline-flex items-center gap-2 text-text-secondary hover:text-text-primary px-3 py-3 text-[13px] font-medium transition-colors">
+            className="inline-flex items-center gap-2 text-text-secondary hover:text-accent px-3 py-3 text-[13px] font-medium transition-colors">
             {t('home.risk.ctaProposal')}
           </Link>
         </div>
@@ -401,13 +397,12 @@ function BookingPlaceholder() {
           {t('home.book.sub')}
         </p>
         <div className="mt-7 flex items-center justify-center gap-3 flex-wrap">
-          <Link to="/contact"
-            className="inline-flex items-center gap-2 bg-accent hover:bg-accent-hover text-white px-5 py-3 rounded-md text-[13px] font-semibold transition-colors">
+          <Link to="/contact" className="button-premium focus-ring">
             <MessageCircle size={13} />
             {t('home.book.send')}
           </Link>
           <a href="mailto:general@cloz.digital?subject=Consultation%20Request"
-            className="inline-flex items-center gap-2 bg-elevated hover:bg-raised border border-border text-text-primary px-5 py-3 rounded-md text-[13px] font-medium transition-colors">
+             className="button-premium ghost focus-ring">
             <Mail size={13} />
             general@cloz.digital
           </a>
@@ -429,19 +424,18 @@ function FinalCTA() {
           </div>
           <div className="relative">
             <h2 className="font-display font-bold text-[32px] md:text-[44px] leading-tight tracking-tight max-w-[680px] mx-auto">
-              {t('home.cta.title')}
+              <span className="text-gradient">{t('home.cta.title')}</span>
             </h2>
             <p className="mt-5 text-[15px] text-text-secondary max-w-[560px] mx-auto leading-relaxed">
               {t('home.cta.sub')}
             </p>
             <div className="mt-9 flex flex-col sm:flex-row items-center justify-center gap-3">
-              <Link to="/contact"
-                className="inline-flex items-center justify-center gap-2 bg-accent hover:bg-accent-hover text-white px-7 py-3.5 rounded-md text-[14px] font-semibold transition-all hover:translate-y-[-1px]">
+              <Link to="/contact" className="button-premium focus-ring">
                 {t('home.cta.book')}
                 <ArrowUpRight size={15} />
               </Link>
               <a href="mailto:general@cloz.digital"
-                className="inline-flex items-center justify-center gap-2 text-text-secondary hover:text-text-primary px-5 py-3.5 text-[13px] font-medium transition-colors">
+                className="inline-flex items-center justify-center gap-2 text-text-secondary hover:text-accent px-5 py-3.5 text-[13px] font-medium transition-colors">
                 <Mail size={13} />
                 general@cloz.digital
               </a>

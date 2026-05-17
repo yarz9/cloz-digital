@@ -28,22 +28,31 @@ export default function PackagesPage() {
   ]
 
   return (
-    <div className="pt-24 pb-20 px-6">
-      <div className="max-w-[1200px] mx-auto">
-        <div className="max-w-[600px] mb-16 mx-auto text-center">
+    <div className="pt-24 pb-20 px-6 section-glow">
+      <div className="relative max-w-[1200px] mx-auto">
+        <div className="max-w-[680px] mb-16 mx-auto text-center animate-fade-up">
           <span className="text-[11px] font-medium uppercase tracking-widest text-accent">{t('packages.eyebrow')}</span>
-          <h1 className="mt-3 font-display font-bold text-[40px] leading-tight">{t('packages.h1')}</h1>
+          <h1 className="mt-3 font-display font-bold text-[40px] leading-tight">
+            <span className="text-gradient">{t('packages.h1')}</span>
+          </h1>
           <p className="mt-4 text-[15px] text-text-secondary leading-relaxed">{t('packages.sub')}</p>
         </div>
 
         <div className="grid md:grid-cols-3 gap-5 mb-16">
-          {packages.map(pkg => (
-            <div key={pkg.name} className={`p-7 rounded-lg border relative ${pkg.accent ? 'bg-accent-muted border-accent/30' : 'bg-surface border-border'}`}>
-              {pkg.best && <span className="absolute -top-2.5 left-7 text-[10px] font-medium bg-accent text-white px-2.5 py-0.5 rounded">{t('home.pkg.mostPopular')}</span>}
+          {packages.map((pkg, i) => (
+            <div key={pkg.name}
+              className={`card-premium with-sheen hover-lift relative animate-fade-up stagger-${i + 1} ${
+                pkg.accent ? '!bg-gradient-to-b !from-accent-muted !to-surface !border-accent/40 md:-translate-y-2 shadow-[0_20px_60px_rgba(94,141,181,0.15)]' : ''
+              }`}>
+              {pkg.best && (
+                <span className="absolute -top-3 left-1/2 -translate-x-1/2 bg-accent text-white text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-wider shadow-[0_4px_14px_rgba(94,141,181,0.4)]">
+                  {t('home.pkg.mostPopular')}
+                </span>
+              )}
               <h3 className="font-display font-bold text-[20px]">{pkg.name}</h3>
               <p className="mt-1 text-[13px] text-text-secondary">{pkg.desc}</p>
               <div className="mt-5 mb-6">
-                <span className="text-[28px] font-display font-bold">{pkg.price}</span>
+                <span className={`text-[28px] font-display font-bold ${pkg.accent ? 'text-gradient-accent' : 'text-text-primary'}`}>{pkg.price}</span>
                 <span className="text-[12px] text-text-tertiary ml-1">{pkg.period}</span>
               </div>
               <ul className="space-y-3">
@@ -54,18 +63,14 @@ export default function PackagesPage() {
                   </li>
                 ))}
               </ul>
-              <a href="/contact" className={`mt-7 w-full inline-flex items-center justify-center gap-2 font-medium px-4 py-2.5 rounded-md transition-colors text-[13px] ${
-                pkg.accent
-                  ? 'bg-accent hover:bg-accent-hover text-white'
-                  : 'bg-elevated hover:bg-raised text-text-primary border border-border'
-              }`}>
+              <a href="/contact" className={`mt-7 block w-full text-center focus-ring ${pkg.accent ? 'button-premium justify-center' : 'button-premium ghost justify-center'}`}>
                 {t('packages.cta')} <ArrowRight size={13} />
               </a>
             </div>
           ))}
         </div>
 
-        <div className="bg-surface border border-border rounded-lg p-8 max-w-[680px] mx-auto">
+        <div className="card-premium with-sheen !p-8 max-w-[680px] mx-auto animate-fade-up stagger-4">
           <h2 className="font-display font-bold text-[20px] mb-4">{t('packages.notSure.t')}</h2>
           <p className="text-[14px] text-text-secondary leading-relaxed mb-4">{t('packages.notSure.d')}</p>
           <a href="/contact" className="inline-flex items-center gap-2 text-accent hover:text-accent-hover font-medium text-[14px]">

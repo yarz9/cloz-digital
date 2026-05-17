@@ -12,7 +12,7 @@ export default function PublicLayout() {
       <WelcomeLanguageModal />
 
       {/* ── Navigation ── */}
-      <header className="fixed top-0 left-0 right-0 z-50 bg-bg/85 backdrop-blur-xl border-b border-border">
+      <header className="fixed top-0 left-0 right-0 z-50 glass-panel border-b border-border">
         <div className="max-w-[1200px] mx-auto px-6 h-16 flex items-center justify-between">
           <Link to="/" className="font-display font-semibold text-[16px] text-text-primary tracking-tight hover:text-accent transition-colors">
             Cloz Digital
@@ -31,8 +31,7 @@ export default function PublicLayout() {
               {t('nav.about')}
             </NavLink>
             <LanguageSwitcher variant="header" />
-            <NavLink to="/contact"
-              className="inline-flex items-center gap-1.5 text-[13px] font-medium text-white bg-accent hover:bg-accent-hover px-4 py-2 rounded-md transition-colors">
+            <NavLink to="/contact" className="button-premium !py-2 !px-4 focus-ring">
               {t('nav.bookCta')}
               <ArrowUpRight size={13} />
             </NavLink>

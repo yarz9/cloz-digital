@@ -12,18 +12,18 @@ export default function ThankYouPage() {
   useEffect(() => { document.title = t('ty.title') }, [t])
 
   return (
-    <section className="pt-32 pb-24 px-6 min-h-[80vh]">
-      <div className="max-w-[720px] mx-auto">
-        <div className="text-center">
+    <section className="pt-32 pb-24 px-6 min-h-[80vh] section-glow">
+      <div className="relative max-w-[720px] mx-auto">
+        <div className="text-center animate-fade-up">
           <div className="relative inline-flex">
-            <div className="absolute inset-0 rounded-full bg-success/15 animate-ping opacity-60" />
+            <div className="absolute inset-0 rounded-full bg-success/15 animate-glow-pulse opacity-60" />
             <div className="relative w-20 h-20 rounded-full bg-success/10 border-2 border-success/30 flex items-center justify-center">
               <CheckCircle2 size={36} className="text-success" />
             </div>
           </div>
 
           <h1 className="mt-8 font-display font-bold text-[36px] md:text-[48px] leading-tight tracking-tight">
-            {name ? `${t('ty.h1.with')} ${name.split(' ')[0]}.` : t('ty.h1.without')}
+            <span className="text-gradient">{name ? `${t('ty.h1.with')} ${name.split(' ')[0]}.` : t('ty.h1.without')}</span>
           </h1>
           <p className="mt-5 text-[15px] md:text-[16px] text-text-secondary leading-relaxed max-w-[520px] mx-auto">
             {t('ty.sub.a')}{' '}
@@ -32,7 +32,7 @@ export default function ThankYouPage() {
           </p>
         </div>
 
-        <div className="mt-12 bg-surface border border-border rounded-2xl p-6 md:p-8">
+        <div className="mt-12 card-premium with-sheen !p-6 md:!p-8 animate-fade-up stagger-2">
           <h2 className="font-display font-semibold text-[15px] mb-5 flex items-center gap-2">
             <Clock size={15} className="text-accent" />
             {t('ty.next')}
@@ -61,14 +61,13 @@ export default function ThankYouPage() {
           )}
         </div>
 
-        <div className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-3">
-          <Link to="/"
-            className="inline-flex items-center gap-2 bg-accent hover:bg-accent-hover text-white px-6 py-3 rounded-md text-[13px] font-semibold transition-colors">
+        <div className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-3 animate-fade-up stagger-4">
+          <Link to="/" className="button-premium focus-ring">
             <ArrowLeft size={13} />
             {t('ty.back')}
           </Link>
           <Link to="/packages"
-            className="inline-flex items-center gap-2 text-text-secondary hover:text-text-primary px-4 py-3 text-[13px] font-medium transition-colors">
+            className="inline-flex items-center gap-2 text-text-secondary hover:text-accent px-4 py-3 text-[13px] font-medium transition-colors">
             {t('ty.viewPkg')}
             <ArrowUpRight size={12} />
           </Link>
