@@ -66,6 +66,7 @@ import PortalClients from './features/management/PortalClients'
 import ServiceDesk from './features/management/ServiceDesk'
 import Localization from './features/management/Localization'
 import KnowledgeCenter from './features/management/KnowledgeCenter'
+import Persistence from './features/management/Persistence'
 import Operations from './features/operations/Operations'
 import Legal from './features/legal/Legal'
 import PortalLayout from './features/portal/PortalLayout'
@@ -186,6 +187,7 @@ export default function App() {
         <Route path="service-desk" element={<ServiceDesk />} />
         <Route path="service-desk/:type/:id" element={<ServiceDesk />} />
         <Route path="localization" element={<Localization />} />
+        <Route path="persistence" element={<Persistence />} />
         <Route path="operations" element={<Operations />} />
         <Route path="legal" element={<Legal />} />
       </Route>

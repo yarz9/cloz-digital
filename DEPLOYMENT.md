@@ -149,38 +149,84 @@ redeploys but is lost if a user clears their browser data.
 
 ---
 
-## PostgreSQL migration roadmap (Phase 2)
+## Persistence Center
 
-A full migration to Railway PostgreSQL is the long-term answer for multi-user
-scale, off-host backups, and standard SQL tooling. It is a substantial
-multi-day rewrite touching every route file. **It is NOT required for
-production durability** — a mounted Volume gives you durable storage today.
+There is a live dashboard at `/management/persistence` that shows:
 
-### Why we haven't shipped PG yet
+- Volume mount status (and refuses to start the server in production
+  without a recognised persistent path — see "Startup safety" below).
+- Per-table row counts and last-write timestamps.
+- An audit log of every mutation hitting the API.
+- Write-proof markers you can drop before a deploy and check after.
+- All snapshot files on disk, downloadable.
+- PostgreSQL ping (when `DATABASE_URL` is set).
 
-- `sql.js` exposes a **synchronous** API. `pg` is async. Every endpoint
-  needs to be rewritten with `await`. There are ~25 route files with
-  hundreds of `db.prepare(...).get/all/run` calls.
-- Many queries use SQLite-specific syntax (`datetime('now', '-7 days')`,
-  `json_extract`, `LIKE` casing, etc.) that doesn't translate 1:1.
-- The migration must be done with care to avoid data loss.
+## Audit log
 
-### Planned migration
+Every `POST/PATCH/PUT/DELETE` against `/api/*` is captured in the
+`persistence_audit` table — actor, route, action, entity, status, latency,
+and a 400-character body snapshot. Non-blocking; never affects responses.
+Visible in the Persistence Center → Audit Log tab.
 
-1. **Adapter layer** (`db/adapter.js`):
-   - Detect `DATABASE_URL` → use `pg`.
-   - Otherwise → use the current sql.js wrapper.
-   - Both implement the same `{ prepare(), exec(), transaction() }` surface.
-2. **SQL dialect helper** — translate the half-dozen SQLite-specific
-   functions (`datetime('now', ...)` → `NOW() + INTERVAL ...`,
-   `json_extract` → `->>`, etc.).
-3. **Route-by-route migration** — convert each route to `await` calls.
-4. **One-time data move** — `scripts/migrate-to-pg.js` reads the existing
-   SQLite file and writes to PostgreSQL via the same adapter.
-5. **Switchover** — set `DATABASE_URL` on Railway, redeploy. Adapter routes
-   reads/writes to PG. Old SQLite file kept as backup.
+## Automated snapshots
 
-Tracking the work explicitly will be cleaner than rushing it in one push.
+The snapshot scheduler (`database/snapshotScheduler.js`) takes one full JSON
+dump on boot and then one every 24 hours into `${DATA_DIR}/backups/`. Files
+named `cloz-snapshot-YYYY-MM-DD.json`, retained 14 days. Tunable via:
+
+| Variable | Default | Purpose |
+|---|---|---|
+| `BACKUPS_ENABLED` | `1` | Set to `0` to disable the scheduler. |
+| `BACKUP_INTERVAL_MS` | `86400000` (24h) | How often to snapshot. |
+| `BACKUP_RETENTION_DAYS` | `14` | How long to keep snapshots. |
+
+Manual snapshot: POST `/api/persistence/snapshots`.
+
+## Startup safety
+
+On boot, `server.js` calls `enforcePersistence()`:
+
+- In production + on Railway + without a persistent volume → the process
+  exits with a clear error before any writes can happen.
+- Emergency override: set `ALLOW_EPHEMERAL_STORAGE=1`. The app starts but
+  prints a loud warning.
+
+This prevents the most common production data-loss scenario.
+
+## PostgreSQL migration roadmap
+
+A full migration to Railway PostgreSQL is the long-term answer for
+multi-user scale, off-host backups, and standard SQL tooling.
+
+**Current state on disk (2026-05-18):**
+- `database/pgAdapter.js` exists. It connects to `DATABASE_URL` and
+  exposes an async `pg`-backed wrapper with the same surface as the
+  sql.js wrapper.
+- `scripts/migrate-to-pg.js` copies every row from SQLite to PG. It is
+  idempotent (`ON CONFLICT DO NOTHING`) and safe to re-run.
+- The Persistence Center shows the PG connection status when configured.
+
+**What is NOT yet done:**
+- The runtime request path still uses sql.js. Roughly 650
+  `db.prepare(...).get/all/run` call sites across 26 route files need
+  to become `await` before the runtime can switch.
+- Several SQLite-specific helpers (`datetime('now','-7 days')`,
+  `json_extract`, etc.) need dialect translation.
+
+**Cutover sequence (when you're ready):**
+
+1. Provision PostgreSQL on Railway and copy `DATABASE_URL` into the
+   service's Variables.
+2. `npm install pg`.
+3. Run `node scripts/migrate-to-pg.js` once. It moves every row from
+   `${DATA_DIR}/cloz-admin.db` into PG, skipping rows that already exist
+   in the destination.
+4. Land the route-by-route async refactor as its own focused project.
+   The audit log + snapshot system + Persistence Center already exist
+   and will continue working through the cutover.
+5. When the last route is async, swap `database/init.js → getDb()` to
+   return `pgWrapper()` from `database/pgAdapter.js`. Keep the SQLite
+   file on the volume as a permanent backup.
 
 ---
 

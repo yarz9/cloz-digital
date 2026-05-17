@@ -106,6 +106,7 @@ const sections = [
       { to: '/management/ai/logs', icon: ScrollText, label: 'System Logs' },
       { to: '/management/logs', icon: Radio, label: 'Activity Logs' },
       { to: '/management/ai/health', icon: Activity, label: 'Health Monitor' },
+      { to: '/management/persistence', icon: Database, label: 'Persistence' },
       { to: '/management/settings', icon: Settings, label: 'Settings' },
     ]
   },

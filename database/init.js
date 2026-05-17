@@ -611,6 +611,50 @@ export async function initDatabase() {
   }
 
   // ══════════════════════════════════════════════════════════════
+  //  PERSISTENCE / AUDIT — write-capture log + write-proof marker
+  // ══════════════════════════════════════════════════════════════
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS persistence_audit (
+      id TEXT PRIMARY KEY,
+      ts TEXT DEFAULT (datetime('now')),
+      actor TEXT DEFAULT '',
+      method TEXT DEFAULT '',
+      route TEXT DEFAULT '',
+      action TEXT DEFAULT '',
+      entity_type TEXT DEFAULT '',
+      entity_id TEXT DEFAULT '',
+      ip TEXT DEFAULT '',
+      status INTEGER DEFAULT 0,
+      duration_ms INTEGER DEFAULT 0,
+      summary TEXT DEFAULT '',
+      diff TEXT DEFAULT ''
+    );
+    CREATE INDEX IF NOT EXISTS idx_audit_ts ON persistence_audit(ts);
+    CREATE INDEX IF NOT EXISTS idx_audit_entity ON persistence_audit(entity_type, entity_id);
+
+    CREATE TABLE IF NOT EXISTS persistence_markers (
+      id TEXT PRIMARY KEY,
+      created_at TEXT DEFAULT (datetime('now')),
+      kind TEXT DEFAULT 'manual',
+      payload TEXT DEFAULT '',
+      created_by TEXT DEFAULT ''
+    );
+    CREATE INDEX IF NOT EXISTS idx_markers_created ON persistence_markers(created_at);
+
+    CREATE TABLE IF NOT EXISTS persistence_snapshots (
+      id TEXT PRIMARY KEY,
+      created_at TEXT DEFAULT (datetime('now')),
+      path TEXT NOT NULL,
+      bytes INTEGER DEFAULT 0,
+      table_count INTEGER DEFAULT 0,
+      row_count INTEGER DEFAULT 0,
+      trigger TEXT DEFAULT 'scheduled',
+      ok INTEGER DEFAULT 1,
+      error TEXT DEFAULT ''
+    );
+  `);
+
+  // ══════════════════════════════════════════════════════════════
   //  KNOWLEDGE CENTER — KB, Academy, Playbooks, Prompts, Copilot, RAG
   // ══════════════════════════════════════════════════════════════
   db.exec(`

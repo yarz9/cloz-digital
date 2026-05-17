@@ -59,6 +59,10 @@ import serviceDeskRoutes from './routes/serviceDesk.js';
 import localizationRoutes from './routes/localization.js';
 import knowledgeRoutes from './routes/knowledge.js';
 import { seedKnowledge } from './database/seedKnowledge.js';
+import persistenceRoutes from './routes/persistence.js';
+import { auditMiddleware } from './database/auditLog.js';
+import { startSnapshotScheduler } from './database/snapshotScheduler.js';
+import { getStorageInfo } from './database/storageInfo.js';
 import rateLimit from 'express-rate-limit';
 import { APP_URL, REDIRECT_HOSTS } from './config/urls.js';
 
@@ -89,6 +93,9 @@ app.use((req, res, next) => {
 
 // ── Request logging middleware ──
 app.use(requestLoggerMiddleware);
+
+// ── Persistence audit (records every mutation to persistence_audit) ──
+app.use(auditMiddleware);
 
 // ── Standalone health check (Railway uses this) ──
 app.get('/health', (_req, res) => {
@@ -135,6 +142,7 @@ app.use('/api/legal', apiLimiter, legalRoutes);
 app.use('/api/service-desk', apiLimiter, serviceDeskRoutes);
 app.use('/api/localization', apiLimiter, localizationRoutes);
 app.use('/api/knowledge', apiLimiter, knowledgeRoutes);
+app.use('/api/persistence', apiLimiter, persistenceRoutes);
 
 // ── Public inquiry endpoint: stricter rate limit to deter abuse ──
 const inquiryLimiter = rateLimit({
@@ -195,9 +203,45 @@ process.on('unhandledRejection', (reason) => {
   console.error('[Fatal] Unhandled rejection:', reason);
 });
 
+// ── Persistence guard: refuse to start in production if the database
+//    is being written to ephemeral storage. This prevents the #1 cause
+//    of "my data disappeared on redeploy" — running on Railway without
+//    a mounted Volume + DATA_DIR.
+function enforcePersistence() {
+  const info = getStorageInfo();
+  if (info.isProduction && info.isRailway && !info.persistent) {
+    // Allow an explicit opt-out for emergencies, but make it noisy.
+    if (process.env.ALLOW_EPHEMERAL_STORAGE === '1') {
+      console.error('');
+      console.error('  ⚠️  RUNNING ON EPHEMERAL STORAGE (ALLOW_EPHEMERAL_STORAGE=1)');
+      console.error('     Data WILL be lost on next redeploy. Set DATA_DIR=/data and');
+      console.error('     mount a Railway Volume at /data as soon as possible.');
+      console.error('');
+      return;
+    }
+    console.error('');
+    console.error('  ✗ REFUSING TO START — persistent storage not detected.');
+    console.error('');
+    console.error('    The database file would be written to:');
+    console.error(`      ${info.dbPath}`);
+    console.error('');
+    console.error('    Any data created on this instance would be permanently lost on');
+    console.error('    the next redeploy. To fix:');
+    console.error('      1) In Railway → Settings → Volumes, add a Volume mounted at /data');
+    console.error('      2) In Railway → Variables, set DATA_DIR=/data');
+    console.error('      3) Redeploy.');
+    console.error('');
+    console.error('    Emergency override (NOT for production): set ALLOW_EPHEMERAL_STORAGE=1');
+    console.error('');
+    process.exit(1);
+  }
+}
+
 // ── Boot ──
 (async () => {
   try {
+    enforcePersistence();
+    process.env.BOOT_TIME = new Date().toISOString();
     const db = await initDatabase();
     ensureActivityLogsTable(db);
     seedDefaults(db);
@@ -219,6 +263,9 @@ process.on('unhandledRejection', (reason) => {
     // Start mail background workers
     startSyncWorker();
     startSendQueueProcessor();
+
+    // Start the persistence snapshot scheduler (one snapshot at boot, then daily)
+    startSnapshotScheduler();
 
     const provider = getActiveProvider();
     const defaultModel = resolveModel('generate');
