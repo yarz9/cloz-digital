@@ -1,41 +1,39 @@
 // Management → Service Desk
-// Unified inbox over portal_tickets + portal_messages + portal_approvals + portal_assets.
-// 9 tabs, request detail panel, reply, internal notes, assign, status, AI helpers,
-// conversion to task / SOP / invoice / proposal, merge, escalate.
+// Phase 2.1 Part 2: fully migrated to TanStack Query hooks.
+// All server state goes through src/hooks/queries/serviceDesk.js +
+// operations.js. Mutations are optimistic where the user feedback
+// benefits (replies, notes, status/priority/assignee patches).
 
 import { useState, useEffect, useMemo, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import {
   Inbox, AlertCircle, Loader2, Search, RefreshCw, Send, Sparkles,
-  CheckCircle2, ChevronRight, Clock, User, Tag, AlertTriangle, FileText,
-  MessageSquare, Image as ImageIcon, FileCheck, MoreHorizontal, Plus,
-  ArrowLeft, ExternalLink, Wrench, Receipt, Star, Mail, X, Brain,
-  GitMerge, Flag, Edit3, Trash2, Building2, Phone, Globe, Briefcase,
-  Target, Headphones, ListChecks, Activity, ChevronDown,
+  CheckCircle2, ChevronRight, Clock, User, AlertTriangle, FileText,
+  MessageSquare, Image as ImageIcon, FileCheck, Plus, ArrowLeft,
+  ExternalLink, Wrench, Receipt, Mail, X, Brain, Flag, Edit3,
+  Building2, Phone, Globe, Briefcase, Tag, Headphones, ListChecks,
+  Activity, Target,
 } from 'lucide-react'
 import { useUser } from '@/contexts/UserContext'
-
-// ── API helper ───────────────────────────────────────────────────
-async function api(path, options = {}) {
-  const res = await fetch(`/api/service-desk${path}`, {
-    headers: { 'Content-Type': 'application/json', ...(options.headers || {}) },
-    ...options,
-  })
-  const json = await res.json().catch(() => ({ error: 'Network error' }))
-  if (!res.ok) throw new Error(json.error || `Server returned ${res.status}`)
-  return json
-}
+import { useToast } from '@/components/ui/Toast'
+import { Skeleton, SkeletonText } from '@/components/ui/Skeleton'
+import {
+  useServiceDeskRequests, useServiceDeskMetrics, useServiceDeskRequest,
+  useReplyToRequest, usePatchRequest, useAddRequestNote,
+  useConvertRequest, useRequestAI,
+} from '@/hooks/queries/serviceDesk'
+import { useOperationsSops } from '@/hooks/queries/operations'
 
 const TABS = [
-  { key: 'inbox',       label: 'Inbox',          icon: Inbox },
-  { key: 'open',        label: 'Open',           icon: MessageSquare },
-  { key: 'awaiting',    label: 'Awaiting Client',icon: Clock },
-  { key: 'in_progress', label: 'In Progress',    icon: Activity },
-  { key: 'completed',   label: 'Completed',      icon: CheckCircle2 },
-  { key: 'urgent',      label: 'Urgent',         icon: AlertTriangle },
-  { key: 'mine',        label: 'Assigned to Me', icon: User },
-  { key: 'all',         label: 'All Requests',   icon: ListChecks },
-  { key: 'ai',          label: 'AI Insights',    icon: Brain },
+  { key: 'inbox',       label: 'Inbox',           icon: Inbox },
+  { key: 'open',        label: 'Open',            icon: MessageSquare },
+  { key: 'awaiting',    label: 'Awaiting Client', icon: Clock },
+  { key: 'in_progress', label: 'In Progress',     icon: Activity },
+  { key: 'completed',   label: 'Completed',       icon: CheckCircle2 },
+  { key: 'urgent',      label: 'Urgent',          icon: AlertTriangle },
+  { key: 'mine',        label: 'Assigned to Me',  icon: User },
+  { key: 'all',         label: 'All Requests',    icon: ListChecks },
+  { key: 'ai',          label: 'AI Insights',     icon: Brain },
 ]
 
 const PRIORITY_COLOR = {
@@ -74,34 +72,19 @@ export default function ServiceDesk() {
   const { user } = useUser()
 
   const [tab, setTab] = useState('inbox')
-  const [requests, setRequests] = useState([])
-  const [metrics, setMetrics] = useState(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState('')
   const [search, setSearch] = useState('')
-  const [refreshKey, setRefreshKey] = useState(0)
   const [selected, setSelected] = useState(type && id ? { type, id } : null)
 
   const me = user?.name || ''
+  const filters = useMemo(() => {
+    const f = { tab }
+    if (search) f.q = search
+    if (tab === 'mine' && me) f.assignee = me
+    return f
+  }, [tab, search, me])
 
-  const load = useCallback(async () => {
-    setLoading(true); setError('')
-    try {
-      const params = new URLSearchParams()
-      params.set('tab', tab)
-      if (search) params.set('q', search)
-      if (tab === 'mine' && me) params.set('assignee', me)
-      const [r, m] = await Promise.all([
-        api(`/requests?${params.toString()}`),
-        api('/metrics'),
-      ])
-      setRequests(r.requests || [])
-      setMetrics(m)
-    } catch (e) { setError(e.message) }
-    finally { setLoading(false) }
-  }, [tab, search, me, refreshKey])
-
-  useEffect(() => { load() }, [load])
+  const requestsQuery = useServiceDeskRequests(filters, { enabled: tab !== 'ai' })
+  const metricsQuery  = useServiceDeskMetrics()
 
   // Sync URL when selection changes
   useEffect(() => {
@@ -109,12 +92,10 @@ export default function ServiceDesk() {
     else navigate('/management/service-desk', { replace: true })
   }, [selected, navigate])
 
-  const refresh = () => setRefreshKey(k => k + 1)
-
   if (tab === 'ai') {
     return <ServiceDeskShell
-      header={<Header search={search} setSearch={setSearch} refresh={refresh} loading={loading} />}
-      tabs={<TabBar tab={tab} setTab={setTab} metrics={metrics} />}
+      header={<Header search={search} setSearch={setSearch} onRefresh={() => { requestsQuery.refetch(); metricsQuery.refetch() }} fetching={requestsQuery.isFetching || metricsQuery.isFetching} />}
+      tabs={<TabBar tab={tab} setTab={setTab} metrics={metricsQuery.data} />}
     >
       <AIInsightsPanel onSelect={(t, id) => { setTab('all'); setSelected({ type: t, id }) }} />
     </ServiceDeskShell>
@@ -122,14 +103,14 @@ export default function ServiceDesk() {
 
   return (
     <ServiceDeskShell
-      header={<Header search={search} setSearch={setSearch} refresh={refresh} loading={loading} />}
-      tabs={<TabBar tab={tab} setTab={setTab} metrics={metrics} />}
+      header={<Header search={search} setSearch={setSearch} onRefresh={() => { requestsQuery.refetch(); metricsQuery.refetch() }} fetching={requestsQuery.isFetching || metricsQuery.isFetching} />}
+      tabs={<TabBar tab={tab} setTab={setTab} metrics={metricsQuery.data} />}
     >
       <div className="flex flex-1 min-h-0">
         <RequestList
-          requests={requests}
-          loading={loading}
-          error={error}
+          requests={requestsQuery.data?.requests || []}
+          isLoading={requestsQuery.isLoading}
+          error={requestsQuery.error}
           selected={selected}
           onSelect={setSelected}
         />
@@ -139,12 +120,11 @@ export default function ServiceDesk() {
               key={`${selected.type}-${selected.id}`}
               type={selected.type}
               id={selected.id}
-              onChange={refresh}
               onClose={() => setSelected(null)}
               currentUser={user}
             />
           ) : (
-            <EmptyDetail metrics={metrics} />
+            <EmptyDetail metrics={metricsQuery.data} />
           )}
         </div>
       </div>
@@ -165,7 +145,7 @@ function ServiceDeskShell({ header, tabs, children }) {
   )
 }
 
-function Header({ search, setSearch, refresh, loading }) {
+function Header({ search, setSearch, onRefresh, fetching }) {
   return (
     <div className="px-6 pt-5 pb-3 border-b border-border bg-surface">
       <div className="flex items-center justify-between gap-3">
@@ -181,11 +161,11 @@ function Header({ search, setSearch, refresh, loading }) {
             <Search size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-text-tertiary" />
             <input value={search} onChange={e => setSearch(e.target.value)}
               placeholder="Search subject, body, client…"
-              className="bg-elevated border border-border rounded-md pl-7 pr-3 py-1.5 text-[12px] w-64 focus:border-accent focus:outline-none" />
+              className="bg-elevated border border-border rounded-md pl-7 pr-3 py-1.5 text-[12px] w-64 focus:border-accent focus:outline-none focus-ring" />
           </div>
-          <button onClick={refresh} disabled={loading}
-            className="p-1.5 text-text-tertiary hover:text-accent transition-colors">
-            <RefreshCw size={13} className={loading ? 'animate-spin' : ''} />
+          <button onClick={onRefresh} disabled={fetching}
+            className="p-1.5 text-text-tertiary hover:text-accent transition-colors focus-ring rounded">
+            <RefreshCw size={13} className={fetching ? 'animate-spin' : ''} />
           </button>
         </div>
       </div>
@@ -196,8 +176,8 @@ function Header({ search, setSearch, refresh, loading }) {
 function TabBar({ tab, setTab, metrics }) {
   const counts = {
     inbox: metrics?.inbox, open: metrics?.open, awaiting: metrics?.awaiting,
-    in_progress: metrics?.in_progress, completed: metrics?.completed, urgent: metrics?.urgent,
-    all: metrics?.total, ai: undefined, mine: undefined,
+    in_progress: metrics?.in_progress, completed: metrics?.completed,
+    urgent: metrics?.urgent, all: metrics?.total,
   }
   return (
     <div className="px-6 border-b border-border bg-surface flex items-center gap-1 overflow-x-auto">
@@ -205,7 +185,7 @@ function TabBar({ tab, setTab, metrics }) {
         const Active = tab === t.key
         return (
           <button key={t.key} onClick={() => setTab(t.key)}
-            className={`flex items-center gap-1.5 px-3 py-2.5 text-[12px] font-medium border-b-2 transition-colors whitespace-nowrap ${
+            className={`flex items-center gap-1.5 px-3 py-2.5 text-[12px] font-medium border-b-2 transition-colors whitespace-nowrap focus-ring ${
               Active ? 'border-accent text-accent' : 'border-transparent text-text-secondary hover:text-text-primary'
             }`}>
             <t.icon size={13} />
@@ -225,33 +205,34 @@ function TabBar({ tab, setTab, metrics }) {
 // ══════════════════════════════════════════════════════════════
 //  REQUEST LIST
 // ══════════════════════════════════════════════════════════════
-function RequestList({ requests, loading, error, selected, onSelect }) {
+function RequestList({ requests, isLoading, error, selected, onSelect }) {
   return (
     <div className="w-[420px] shrink-0 overflow-y-auto bg-surface">
       {error && (
         <div className="m-3 bg-error/5 border border-error/20 rounded-md p-2.5 text-[11px] text-error flex items-center gap-2">
-          <AlertCircle size={12} /> {error}
+          <AlertCircle size={12} /> {error.message}
         </div>
       )}
-      {loading && requests.length === 0 ? (
-        <div className="py-12 flex justify-center"><Loader2 size={18} className="animate-spin text-accent" /></div>
+      {isLoading && requests.length === 0 ? (
+        <RequestListSkeleton />
       ) : requests.length === 0 ? (
-        <div className="py-16 text-center px-6">
+        <div className="py-16 text-center px-6 animate-fade-up">
           <Inbox size={28} className="mx-auto text-text-tertiary mb-3" />
           <p className="text-[13px] text-text-secondary">No requests in this view</p>
           <p className="text-[11px] text-text-tertiary mt-1">When clients open tickets, send messages, request approvals, or upload assets, they'll appear here.</p>
         </div>
       ) : (
         <div>
-          {requests.map(r => {
+          {requests.map((r, i) => {
             const TIcon = TYPE_ICON[r.type] || MessageSquare
             const isSelected = selected?.type === r.type && selected?.id === r.id
             return (
               <button key={`${r.type}-${r.id}`}
                 onClick={() => onSelect({ type: r.type, id: r.id })}
-                className={`w-full text-left px-4 py-3 border-b border-border transition-colors ${
+                className={`w-full text-left px-4 py-3 border-b border-border transition-colors focus-ring animate-fade-up ${
                   isSelected ? 'bg-accent-muted' : 'hover:bg-elevated'
-                }`}>
+                }`}
+                style={{ animationDelay: `${Math.min(i * 20, 200)}ms` }}>
                 <div className="flex items-start gap-2.5">
                   <div className={`w-7 h-7 rounded-md flex items-center justify-center shrink-0 ${
                     isSelected ? 'bg-accent text-white' : 'bg-elevated text-text-tertiary'
@@ -286,13 +267,36 @@ function RequestList({ requests, loading, error, selected, onSelect }) {
   )
 }
 
+function RequestListSkeleton() {
+  return (
+    <div>
+      {Array.from({ length: 6 }).map((_, i) => (
+        <div key={i} className="px-4 py-3 border-b border-border flex items-start gap-2.5">
+          <Skeleton className="w-7 h-7 rounded-md shrink-0" />
+          <div className="flex-1 space-y-1.5">
+            <div className="flex items-center justify-between">
+              <Skeleton className="h-3 w-28" />
+              <Skeleton className="h-2 w-10" />
+            </div>
+            <Skeleton className="h-2.5 w-3/4" />
+            <div className="flex gap-1.5 mt-1">
+              <Skeleton className="h-3 w-12 rounded" />
+              <Skeleton className="h-3 w-14 rounded" />
+            </div>
+          </div>
+        </div>
+      ))}
+    </div>
+  )
+}
+
 // ══════════════════════════════════════════════════════════════
 //  EMPTY DETAIL
 // ══════════════════════════════════════════════════════════════
 function EmptyDetail({ metrics }) {
   return (
-    <div className="h-full flex flex-col items-center justify-center text-center px-8 py-16">
-      <div className="w-14 h-14 rounded-xl bg-accent-muted flex items-center justify-center mb-4">
+    <div className="h-full flex flex-col items-center justify-center text-center px-8 py-16 animate-fade-up">
+      <div className="w-14 h-14 rounded-xl bg-accent-muted flex items-center justify-center mb-4 animate-glow-pulse">
         <Headphones size={24} className="text-accent" />
       </div>
       <h3 className="font-display font-semibold text-[16px] mb-1">Pick a request to start</h3>
@@ -311,7 +315,7 @@ function EmptyDetail({ metrics }) {
 }
 function Stat({ label, value, icon: Icon, accent = 'text-accent' }) {
   return (
-    <div className="bg-surface border border-border rounded-lg p-3 text-left">
+    <div className="card-premium hover-lift text-left">
       <div className={`flex items-center gap-1.5 text-[10px] uppercase tracking-wider mb-1 ${accent}`}>
         <Icon size={11} />{label}
       </div>
@@ -323,49 +327,32 @@ function Stat({ label, value, icon: Icon, accent = 'text-accent' }) {
 // ══════════════════════════════════════════════════════════════
 //  REQUEST DETAIL
 // ══════════════════════════════════════════════════════════════
-function RequestDetail({ type, id, onChange, onClose, currentUser }) {
-  const [data, setData] = useState(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState('')
+function RequestDetail({ type, id, onClose, currentUser }) {
+  const { data, isLoading, error } = useServiceDeskRequest(type, id)
   const [showProfile, setShowProfile] = useState(false)
-  const [refreshTick, setRefreshTick] = useState(0)
 
-  const load = useCallback(async () => {
-    setLoading(true); setError('')
-    try {
-      const d = await api(`/requests/${type}/${id}`)
-      setData(d)
-    } catch (e) { setError(e.message) }
-    finally { setLoading(false) }
-  }, [type, id, refreshTick])
-
-  useEffect(() => { load() }, [load])
-
-  const refresh = () => { setRefreshTick(t => t + 1); onChange?.() }
-
-  if (loading) return <div className="py-16 flex justify-center"><Loader2 size={20} className="animate-spin text-accent" /></div>
-  if (error) return <div className="m-4 bg-error/5 border border-error/20 rounded-md p-3 text-[12px] text-error">{error}</div>
+  if (isLoading) return <RequestDetailSkeleton />
+  if (error) return <div className="m-4 bg-error/5 border border-error/20 rounded-md p-3 text-[12px] text-error">{error.message}</div>
   if (!data || !data.request) return null
 
   const { request, messages = [], notes = [], tasks = [], client } = data
   const TIcon = TYPE_ICON[request.type] || MessageSquare
 
   return (
-    <div className="h-full flex flex-col">
-      {/* Header */}
+    <div className="h-full flex flex-col animate-fade-up">
       <div className="px-6 pt-5 pb-4 border-b border-border bg-surface">
         <div className="flex items-start justify-between gap-3">
           <div className="flex items-start gap-3 min-w-0 flex-1">
-            <button onClick={onClose} className="p-1 -ml-1 text-text-tertiary hover:text-text-primary lg:hidden">
+            <button onClick={onClose} className="p-1 -ml-1 text-text-tertiary hover:text-text-primary lg:hidden focus-ring rounded">
               <ArrowLeft size={15} />
             </button>
-            <div className={`w-10 h-10 rounded-md bg-accent-muted flex items-center justify-center shrink-0`}>
+            <div className="w-10 h-10 rounded-md bg-accent-muted flex items-center justify-center shrink-0">
               <TIcon size={16} className="text-accent" />
             </div>
             <div className="min-w-0 flex-1">
               <h2 className="font-display font-semibold text-[16px] text-text-primary truncate">{request.subject}</h2>
               <div className="flex items-center gap-2 mt-1 flex-wrap text-[11px] text-text-tertiary">
-                <button onClick={() => setShowProfile(true)} className="flex items-center gap-1 hover:text-accent">
+                <button onClick={() => setShowProfile(true)} className="flex items-center gap-1 hover:text-accent focus-ring rounded px-1">
                   <Building2 size={11} />{client?.business_name || '—'}
                 </button>
                 {client?.email && <><span>·</span><a href={`mailto:${client.email}`} className="hover:text-accent">{client.email}</a></>}
@@ -376,42 +363,27 @@ function RequestDetail({ type, id, onChange, onClose, currentUser }) {
             </div>
           </div>
         </div>
-
-        {/* Control row */}
-        <ControlBar request={request} onChange={refresh} />
+        <ControlBar request={request} />
       </div>
 
-      {/* Body */}
       <div className="flex-1 overflow-y-auto px-6 py-5 space-y-4">
         <OriginalRequest request={request} />
-
         {request.ai_summary && <AISummaryCard text={request.ai_summary} />}
-
-        {request.type === 'ticket' && (
-          <ConversationThread messages={messages} />
-        )}
+        {request.type === 'ticket' && <ConversationThread messages={messages} />}
         {request.type === 'message' && messages.length > 1 && (
           <ConversationThread messages={messages.map(m => ({ ...m, body: m.body, author_name: m.author === 'cloz' ? (m.author_name || 'Cloz') : (m.author_name || client?.business_name) }))} />
         )}
-
-        <InternalNotes notes={notes} requestType={type} requestId={id} author={currentUser?.name || ''} onChange={refresh} />
-
-        {tasks.length > 0 && (
-          <LinkedTasks tasks={tasks} />
-        )}
-
-        <AIToolbox type={type} id={id} onChange={refresh} />
-
-        <ConversionPanel type={type} id={id} request={request} client={client} onConverted={refresh} />
+        <InternalNotes notes={notes} requestType={type} requestId={id} author={currentUser?.name || ''} />
+        {tasks.length > 0 && <LinkedTasks tasks={tasks} />}
+        <AIToolbox type={type} id={id} />
+        <ConversionPanel type={type} id={id} request={request} client={client} />
       </div>
 
-      {/* Reply composer pinned at bottom (for ticket/message/approval/asset) */}
       <ReplyComposer
         type={type}
         id={id}
         clientEmail={client?.email}
         defaultAuthor={currentUser?.name || 'Cloz Digital'}
-        onSent={refresh}
       />
 
       {showProfile && client && (
@@ -421,14 +393,50 @@ function RequestDetail({ type, id, onChange, onClose, currentUser }) {
   )
 }
 
-function ControlBar({ request, onChange }) {
-  const [busy, setBusy] = useState(false)
+function RequestDetailSkeleton() {
+  return (
+    <div className="h-full overflow-hidden">
+      <div className="px-6 pt-5 pb-4 border-b border-border bg-surface">
+        <div className="flex items-start gap-3">
+          <Skeleton className="w-10 h-10 rounded-md shrink-0" />
+          <div className="flex-1 space-y-2">
+            <Skeleton className="h-5 w-1/2" />
+            <Skeleton className="h-3 w-1/3" />
+          </div>
+        </div>
+        <div className="mt-3 flex gap-2">
+          <Skeleton className="h-7 w-24 rounded" />
+          <Skeleton className="h-7 w-24 rounded" />
+          <Skeleton className="h-7 w-24 rounded" />
+        </div>
+      </div>
+      <div className="px-6 py-5 space-y-4">
+        <div className="card-premium">
+          <Skeleton className="h-3 w-20 mb-3" />
+          <SkeletonText lines={4} />
+        </div>
+        <div className="card-premium">
+          <Skeleton className="h-3 w-32 mb-3" />
+          <SkeletonText lines={3} />
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function ControlBar({ request }) {
+  const toast = useToast()
+  const patchMutation = usePatchRequest()
+  const busy = patchMutation.isPending
+
   const patch = async (body) => {
-    setBusy(true)
-    try { await api(`/requests/${request.type}/${request.id}`, { method: 'PATCH', body: JSON.stringify(body) }); onChange?.() }
-    catch (e) { alert(e.message) }
-    finally { setBusy(false) }
+    try {
+      await patchMutation.mutateAsync({ type: request.type, id: request.id, patch: body })
+    } catch (e) {
+      toast.error('Update failed', { description: e.message })
+    }
   }
+
   const STATUSES = ['open','in_progress','awaiting_client','completed','closed']
   const PRIORITIES = ['low','medium','high','urgent']
   const ASSIGNEES = ['', 'Anes', 'Denis']
@@ -440,7 +448,7 @@ function ControlBar({ request, onChange }) {
       <CtrlSelect label="Assignee" value={request.assignee || ''} options={ASSIGNEES.map(a => ({ value: a, label: a || 'Unassigned' }))} onChange={v => patch({ assignee_name: v, assignee_email: v === 'Anes' ? 'anes@cloz.digital' : v === 'Denis' ? 'denis@cloz.digital' : '' })} disabled={busy} />
       {request.type === 'ticket' && (
         <button onClick={() => patch({ escalated: !request.escalated })} disabled={busy}
-          className={`flex items-center gap-1 px-2.5 py-1.5 rounded text-[11px] font-medium border ${
+          className={`flex items-center gap-1 px-2.5 py-1.5 rounded text-[11px] font-medium border focus-ring transition-colors ${
             request.escalated ? 'bg-error/10 text-error border-error/20' : 'bg-elevated border-border text-text-secondary hover:text-text-primary'
           }`}>
           <Flag size={11} /> {request.escalated ? 'Escalated' : 'Escalate'}
@@ -451,7 +459,7 @@ function ControlBar({ request, onChange }) {
 }
 function CtrlSelect({ label, value, options, onChange, disabled }) {
   return (
-    <label className="flex items-center gap-1.5 bg-elevated border border-border rounded px-2 py-1 text-[11px]">
+    <label className="flex items-center gap-1.5 bg-elevated border border-border rounded px-2 py-1 text-[11px] focus-within:border-accent">
       <span className="text-text-tertiary uppercase tracking-wider text-[9px]">{label}</span>
       <select value={value} onChange={e => onChange(e.target.value)} disabled={disabled}
         className="bg-transparent text-text-primary outline-none cursor-pointer capitalize">
@@ -463,7 +471,7 @@ function CtrlSelect({ label, value, options, onChange, disabled }) {
 
 function OriginalRequest({ request }) {
   return (
-    <div className="bg-surface border border-border rounded-lg p-4">
+    <div className="card-premium">
       <div className="flex items-center justify-between mb-2">
         <span className="text-[10px] uppercase tracking-wider text-text-tertiary font-semibold">Original Request</span>
         <span className="text-[10px] text-text-tertiary capitalize">{request.category}</span>
@@ -485,7 +493,7 @@ function OriginalRequest({ request }) {
 
 function AISummaryCard({ text }) {
   return (
-    <div className="bg-accent-muted/40 border border-accent/20 rounded-lg p-4">
+    <div className="bg-accent-muted/40 border border-accent/20 rounded-lg p-4 animate-fade-up">
       <div className="flex items-center gap-1.5 mb-1.5">
         <Sparkles size={12} className="text-accent" />
         <span className="text-[10px] uppercase tracking-wider text-accent font-semibold">AI Summary</span>
@@ -502,12 +510,17 @@ function ConversationThread({ messages }) {
       <div className="text-[10px] uppercase tracking-wider text-text-tertiary font-semibold mb-2">Conversation ({messages.length})</div>
       <div className="space-y-2.5">
         {messages.map(m => (
-          <div key={m.id} className={`rounded-lg p-3.5 border ${m.author === 'cloz' ? 'bg-accent-muted/30 border-accent/20' : 'bg-surface border-border'}`}>
+          <div key={m.id}
+            className={`rounded-lg p-3.5 border transition-opacity ${
+              m._optimistic ? 'opacity-60' : ''
+            } ${m.author === 'cloz' ? 'bg-accent-muted/30 border-accent/20' : 'bg-surface border-border'}`}>
             <div className="flex items-center justify-between mb-1.5">
               <span className={`text-[11px] font-semibold ${m.author === 'cloz' ? 'text-accent' : 'text-text-primary'}`}>
                 {m.author_name || (m.author === 'cloz' ? 'Cloz Digital' : 'Client')}
               </span>
-              <span className="text-[10px] text-text-tertiary">{fmtRelative(m.created_at)}</span>
+              <span className="text-[10px] text-text-tertiary">
+                {m._optimistic ? 'sending…' : fmtRelative(m.created_at)}
+              </span>
             </div>
             <p className="text-[12px] text-text-primary whitespace-pre-wrap leading-relaxed">{m.body}</p>
           </div>
@@ -517,18 +530,19 @@ function ConversationThread({ messages }) {
   )
 }
 
-function InternalNotes({ notes, requestType, requestId, author, onChange }) {
+function InternalNotes({ notes, requestType, requestId, author }) {
+  const toast = useToast()
+  const addNote = useAddRequestNote()
   const [draft, setDraft] = useState('')
-  const [saving, setSaving] = useState(false)
+
   const save = async () => {
     if (!draft.trim()) return
-    setSaving(true)
     try {
-      await api(`/requests/${requestType}/${requestId}/notes`, { method: 'POST', body: JSON.stringify({ body: draft, author }) })
-      setDraft(''); onChange?.()
-    } catch (e) { alert(e.message) }
-    finally { setSaving(false) }
+      await addNote.mutateAsync({ type: requestType, id: requestId, body: { body: draft, author } })
+      setDraft('')
+    } catch (e) { toast.error('Note failed', { description: e.message }) }
   }
+
   return (
     <div className="bg-warning/5 border border-warning/20 rounded-lg p-4">
       <div className="text-[10px] uppercase tracking-wider text-warning font-semibold mb-2 flex items-center gap-1.5">
@@ -537,10 +551,12 @@ function InternalNotes({ notes, requestType, requestId, author, onChange }) {
       {notes.length > 0 && (
         <div className="space-y-2 mb-3">
           {notes.map(n => (
-            <div key={n.id} className="bg-bg/50 rounded p-2.5 text-[12px] text-text-primary">
+            <div key={n.id} className={`bg-bg/50 rounded p-2.5 text-[12px] text-text-primary ${n._optimistic ? 'opacity-60' : ''}`}>
               <div className="flex items-center justify-between mb-1">
                 <span className="text-[10px] font-semibold text-text-tertiary">{n.author || 'Team'}</span>
-                <span className="text-[10px] text-text-tertiary">{fmtRelative(n.created_at)}</span>
+                <span className="text-[10px] text-text-tertiary">
+                  {n._optimistic ? 'saving…' : fmtRelative(n.created_at)}
+                </span>
               </div>
               <p className="whitespace-pre-wrap">{n.body}</p>
             </div>
@@ -550,10 +566,10 @@ function InternalNotes({ notes, requestType, requestId, author, onChange }) {
       <div className="flex gap-2">
         <textarea value={draft} onChange={e => setDraft(e.target.value)} rows={2}
           placeholder="Add an internal note (not visible to the client)…"
-          className="flex-1 bg-bg border border-border rounded-md px-3 py-2 text-[12px] focus:border-warning focus:outline-none resize-none" />
-        <button onClick={save} disabled={saving || !draft.trim()}
-          className="self-end bg-warning text-bg px-3 py-2 rounded-md text-[11px] font-semibold disabled:opacity-50">
-          {saving ? <Loader2 size={11} className="animate-spin" /> : 'Save'}
+          className="flex-1 bg-bg border border-border rounded-md px-3 py-2 text-[12px] focus:border-warning focus:outline-none resize-none focus-ring" />
+        <button onClick={save} disabled={addNote.isPending || !draft.trim()}
+          className="self-end bg-warning text-bg px-3 py-2 rounded-md text-[11px] font-semibold disabled:opacity-50 focus-ring">
+          {addNote.isPending ? <Loader2 size={11} className="animate-spin" /> : 'Save'}
         </button>
       </div>
     </div>
@@ -562,9 +578,9 @@ function InternalNotes({ notes, requestType, requestId, author, onChange }) {
 
 function LinkedTasks({ tasks }) {
   return (
-    <div className="bg-surface border border-border rounded-lg p-4">
+    <div className="card-premium">
       <div className="text-[10px] uppercase tracking-wider text-text-tertiary font-semibold mb-2 flex items-center gap-1.5">
-        <CheckSquareIcon /> Linked Tasks ({tasks.length})
+        <FileCheck size={11} /> Linked Tasks ({tasks.length})
       </div>
       <div className="space-y-1.5">
         {tasks.map(t => (
@@ -579,45 +595,49 @@ function LinkedTasks({ tasks }) {
     </div>
   )
 }
-function CheckSquareIcon() { return <FileCheck size={11} /> }
 
-function AIToolbox({ type, id, onChange }) {
-  const [busy, setBusy] = useState(null)
+function AIToolbox({ type, id }) {
+  const toast = useToast()
+  const aiMutation = useRequestAI()
   const [output, setOutput] = useState(null)
+  const [busy, setBusy] = useState(null)
+
   const run = async (action) => {
     setBusy(action); setOutput(null)
     try {
-      const r = await api(`/requests/${type}/${id}/ai`, { method: 'POST', body: JSON.stringify({ action }) })
+      const r = await aiMutation.mutateAsync({ type, id, action })
       setOutput({ action, text: r.result })
-      if (action === 'summary') onChange?.()
-    } catch (e) { setOutput({ action, text: `Error: ${e.message}` }) }
-    finally { setBusy(null) }
+    } catch (e) {
+      setOutput({ action, text: `Error: ${e.message}` })
+      toast.error('AI failed', { description: e.message })
+    } finally { setBusy(null) }
   }
+
   const ACTIONS = [
-    { key: 'summary',       label: 'Summarize',   icon: Sparkles },
-    { key: 'suggest_reply', label: 'Suggest reply', icon: MessageSquare },
+    { key: 'summary',       label: 'Summarize',      icon: Sparkles },
+    { key: 'suggest_reply', label: 'Suggest reply',  icon: MessageSquare },
     { key: 'urgency',       label: 'Detect urgency', icon: AlertTriangle },
     { key: 'assignee',      label: 'Suggest assignee', icon: User },
     { key: 'effort',        label: 'Estimate effort', icon: Clock },
-    { key: 'upsell',        label: 'Upsell ideas', icon: Target },
+    { key: 'upsell',        label: 'Upsell ideas',   icon: Target },
     { key: 'checklist',     label: 'Make checklist', icon: ListChecks },
   ]
   return (
-    <div className="bg-surface border border-border rounded-lg p-4">
+    <div className="card-premium">
       <div className="text-[10px] uppercase tracking-wider text-text-tertiary font-semibold mb-2.5 flex items-center gap-1.5">
         <Brain size={11} className="text-accent" /> AI Helpers
       </div>
       <div className="flex flex-wrap gap-1.5">
         {ACTIONS.map(a => (
           <button key={a.key} onClick={() => run(a.key)} disabled={!!busy}
-            className="flex items-center gap-1 px-2.5 py-1.5 rounded text-[11px] font-medium bg-elevated text-text-secondary hover:bg-accent-muted hover:text-accent disabled:opacity-50">
+            className="flex items-center gap-1 px-2.5 py-1.5 rounded text-[11px] font-medium bg-elevated text-text-secondary hover:bg-accent-muted hover:text-accent disabled:opacity-50 focus-ring transition-colors">
             {busy === a.key ? <Loader2 size={10} className="animate-spin" /> : <a.icon size={10} />}
             {a.label}
           </button>
         ))}
       </div>
       {output && (
-        <div className="mt-3 pt-3 border-t border-border">
+        <div className="mt-3 pt-3 border-t border-border animate-fade-up">
           <div className="text-[10px] uppercase tracking-wider text-accent font-semibold mb-1.5">{output.action.replace('_',' ')}</div>
           <p className="text-[12px] text-text-primary whitespace-pre-wrap leading-relaxed">{output.text}</p>
         </div>
@@ -626,52 +646,49 @@ function AIToolbox({ type, id, onChange }) {
   )
 }
 
-function ConversionPanel({ type, id, request, client, onConverted }) {
+function ConversionPanel({ type, id, request, client }) {
+  const toast = useToast()
+  const convert = useConvertRequest()
+  const { data: sopsData } = useOperationsSops()
+  const sops = sopsData?.sops || []
+
   const [open, setOpen] = useState(false)
   const [target, setTarget] = useState('task')
   const [payload, setPayload] = useState({})
-  const [busy, setBusy] = useState(false)
-  const [sops, setSops] = useState([])
-
-  useEffect(() => {
-    if (target === 'sop') fetch('/api/operations/sops').then(r => r.json()).then(d => setSops(d.sops || [])).catch(() => {})
-  }, [target])
 
   const submit = async () => {
-    setBusy(true)
     try {
-      const r = await api(`/requests/${type}/${id}/convert`, { method: 'POST', body: JSON.stringify({ target, payload }) })
-      alert(`Created ${r.kind} (id ${r.id.slice(0,8)}…)`)
-      setOpen(false); setPayload({}); onConverted?.()
-    } catch (e) { alert(e.message) }
-    finally { setBusy(false) }
+      const r = await convert.mutateAsync({ type, id, target, payload })
+      toast.success(`Created ${r.kind}`, { description: `id ${r.id.slice(0,8)}…` })
+      setOpen(false); setPayload({})
+    } catch (e) { toast.error('Conversion failed', { description: e.message }) }
   }
 
   if (!open) {
     return (
       <button onClick={() => setOpen(true)}
-        className="w-full bg-surface border border-dashed border-border hover:border-accent rounded-lg p-3 text-[12px] text-text-tertiary hover:text-accent flex items-center justify-center gap-1.5">
+        className="w-full bg-surface border border-dashed border-border hover:border-accent rounded-lg p-3 text-[12px] text-text-tertiary hover:text-accent flex items-center justify-center gap-1.5 focus-ring transition-colors">
         <Plus size={12} /> Convert this request → Task · SOP · Invoice · Proposal
       </button>
     )
   }
 
   return (
-    <div className="bg-surface border border-accent/20 rounded-lg p-4 space-y-3">
+    <div className="card-premium animate-fade-up !border-accent/20 space-y-3">
       <div className="flex items-center justify-between">
         <div className="text-[10px] uppercase tracking-wider text-accent font-semibold">Convert</div>
-        <button onClick={() => setOpen(false)} className="text-text-tertiary hover:text-text-primary"><X size={13} /></button>
+        <button onClick={() => setOpen(false)} className="text-text-tertiary hover:text-text-primary focus-ring rounded p-0.5"><X size={13} /></button>
       </div>
 
       <div className="grid grid-cols-4 gap-1.5">
         {[
-          { v: 'task', l: 'Task', i: ListChecks },
-          { v: 'sop',  l: 'SOP',  i: Wrench },
-          { v: 'invoice', l: 'Invoice', i: Receipt },
+          { v: 'task',     l: 'Task',     i: ListChecks },
+          { v: 'sop',      l: 'SOP',      i: Wrench },
+          { v: 'invoice',  l: 'Invoice',  i: Receipt },
           { v: 'proposal', l: 'Proposal', i: FileText },
         ].map(t => (
           <button key={t.v} onClick={() => setTarget(t.v)}
-            className={`flex flex-col items-center gap-1 p-2.5 rounded border text-[11px] font-medium ${
+            className={`flex flex-col items-center gap-1 p-2.5 rounded border text-[11px] font-medium focus-ring transition-colors ${
               target === t.v ? 'border-accent text-accent bg-accent-muted' : 'border-border text-text-secondary hover:text-text-primary'
             }`}>
             <t.i size={14} /> {t.l}
@@ -712,9 +729,9 @@ function ConversionPanel({ type, id, request, client, onConverted }) {
         </div>
       )}
 
-      <button onClick={submit} disabled={busy || (target === 'sop' && !payload.sop_id)}
-        className="w-full bg-accent text-white py-2 rounded text-[12px] font-semibold disabled:opacity-50 flex items-center justify-center gap-1.5">
-        {busy ? <Loader2 size={12} className="animate-spin" /> : <Plus size={12} />} Create {target}
+      <button onClick={submit} disabled={convert.isPending || (target === 'sop' && !payload.sop_id)}
+        className="button-premium w-full justify-center focus-ring disabled:opacity-50">
+        {convert.isPending ? <Loader2 size={12} className="animate-spin" /> : <Plus size={12} />} Create {target}
       </button>
     </div>
   )
@@ -725,7 +742,7 @@ function Input({ label, value, onChange, type = 'text' }) {
     <div>
       <label className="text-[10px] uppercase tracking-wider text-text-tertiary block mb-1">{label}</label>
       <input type={type} value={value || ''} onChange={e => onChange(e.target.value)}
-        className="w-full bg-bg border border-border rounded px-2.5 py-1.5 text-[12px] focus:border-accent focus:outline-none" />
+        className="w-full bg-bg border border-border rounded px-2.5 py-1.5 text-[12px] focus:border-accent focus:outline-none focus-ring" />
     </div>
   )
 }
@@ -734,7 +751,7 @@ function Textarea({ label, value, onChange, rows = 3 }) {
     <div>
       <label className="text-[10px] uppercase tracking-wider text-text-tertiary block mb-1">{label}</label>
       <textarea value={value || ''} onChange={e => onChange(e.target.value)} rows={rows}
-        className="w-full bg-bg border border-border rounded px-2.5 py-1.5 text-[12px] focus:border-accent focus:outline-none resize-none" />
+        className="w-full bg-bg border border-border rounded px-2.5 py-1.5 text-[12px] focus:border-accent focus:outline-none resize-none focus-ring" />
     </div>
   )
 }
@@ -744,55 +761,53 @@ function Select({ label, value, options, onChange }) {
     <div>
       <label className="text-[10px] uppercase tracking-wider text-text-tertiary block mb-1">{label}</label>
       <select value={value} onChange={e => onChange(e.target.value)}
-        className="w-full bg-bg border border-border rounded px-2.5 py-1.5 text-[12px] focus:border-accent focus:outline-none capitalize">
+        className="w-full bg-bg border border-border rounded px-2.5 py-1.5 text-[12px] focus:border-accent focus:outline-none capitalize focus-ring">
         {opts.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
       </select>
     </div>
   )
 }
 
-function ReplyComposer({ type, id, clientEmail, defaultAuthor, onSent }) {
+function ReplyComposer({ type, id, clientEmail, defaultAuthor }) {
+  const toast = useToast()
+  const reply = useReplyToRequest()
+  const ai    = useRequestAI()
   const [body, setBody] = useState('')
   const [author, setAuthor] = useState(defaultAuthor)
   const [sendEmail, setSendEmail] = useState(true)
   const [closeAfter, setCloseAfter] = useState(false)
-  const [sending, setSending] = useState(false)
-  const [aiBusy, setAiBusy] = useState(false)
 
   const generate = async () => {
-    setAiBusy(true)
     try {
-      const r = await api(`/requests/${type}/${id}/ai`, { method: 'POST', body: JSON.stringify({ action: 'suggest_reply' }) })
+      const r = await ai.mutateAsync({ type, id, action: 'suggest_reply' })
       setBody(r.result || '')
-    } catch (e) { alert(e.message) }
-    finally { setAiBusy(false) }
+    } catch (e) { toast.error('AI suggest failed', { description: e.message }) }
   }
 
   const send = async () => {
     if (!body.trim()) return
-    setSending(true)
     try {
-      await api(`/requests/${type}/${id}/reply`, {
-        method: 'POST',
-        body: JSON.stringify({
+      await reply.mutateAsync({
+        type, id,
+        body: {
           body, author_name: author, send_email: sendEmail,
           status: closeAfter ? 'closed' : undefined,
-        }),
+        },
       })
-      setBody(''); onSent?.()
-    } catch (e) { alert(e.message) }
-    finally { setSending(false) }
+      setBody('')
+      toast.success('Reply sent', { description: sendEmail ? 'Posted in portal + emailed' : 'Posted in portal' })
+    } catch (e) { toast.error('Reply failed', { description: e.message }) }
   }
 
   return (
     <div className="border-t border-border bg-surface px-6 py-4 shrink-0">
       <textarea value={body} onChange={e => setBody(e.target.value)}
         placeholder={`Reply to client${clientEmail ? ` (${clientEmail})` : ''}…`} rows={3}
-        className="w-full bg-bg border border-border rounded-md px-3 py-2 text-[13px] focus:border-accent focus:outline-none resize-none" />
+        className="w-full bg-bg border border-border rounded-md px-3 py-2 text-[13px] focus:border-accent focus:outline-none resize-none focus-ring" />
       <div className="flex items-center justify-between gap-3 mt-2 flex-wrap">
         <div className="flex items-center gap-3 text-[11px] text-text-secondary">
           <input value={author} onChange={e => setAuthor(e.target.value)} placeholder="Your name"
-            className="bg-elevated border border-border rounded px-2 py-1 text-[11px] w-32" />
+            className="bg-elevated border border-border rounded px-2 py-1 text-[11px] w-32 focus-ring" />
           <label className="flex items-center gap-1.5">
             <input type="checkbox" checked={sendEmail} onChange={e => setSendEmail(e.target.checked)} className="accent-accent" />
             Also email
@@ -803,13 +818,13 @@ function ReplyComposer({ type, id, clientEmail, defaultAuthor, onSent }) {
           </label>
         </div>
         <div className="flex items-center gap-2">
-          <button onClick={generate} disabled={aiBusy}
-            className="flex items-center gap-1 text-[11px] text-accent hover:bg-accent-muted px-2.5 py-1.5 rounded">
-            {aiBusy ? <Loader2 size={11} className="animate-spin" /> : <Sparkles size={11} />} Suggest reply
+          <button onClick={generate} disabled={ai.isPending}
+            className="flex items-center gap-1 text-[11px] text-accent hover:bg-accent-muted px-2.5 py-1.5 rounded focus-ring">
+            {ai.isPending ? <Loader2 size={11} className="animate-spin" /> : <Sparkles size={11} />} Suggest reply
           </button>
-          <button onClick={send} disabled={sending || !body.trim()}
-            className="flex items-center gap-1.5 bg-accent hover:bg-accent-hover text-white px-4 py-1.5 rounded text-[12px] font-semibold disabled:opacity-50">
-            {sending ? <Loader2 size={11} className="animate-spin" /> : <Send size={11} />} Send reply
+          <button onClick={send} disabled={reply.isPending || !body.trim()}
+            className="button-premium !py-1.5 !px-4 focus-ring disabled:opacity-50">
+            {reply.isPending ? <Loader2 size={11} className="animate-spin" /> : <Send size={11} />} Send reply
           </button>
         </div>
       </div>
@@ -822,14 +837,14 @@ function ReplyComposer({ type, id, clientEmail, defaultAuthor, onSent }) {
 // ══════════════════════════════════════════════════════════════
 function ClientProfileDrawer({ client, onClose }) {
   return (
-    <div className="fixed inset-0 bg-black/50 z-50 flex justify-end" onClick={onClose}>
-      <div className="w-[440px] h-full bg-surface border-l border-border overflow-y-auto" onClick={e => e.stopPropagation()}>
-        <div className="px-5 py-4 border-b border-border flex items-center justify-between sticky top-0 bg-surface z-10">
+    <div className="fixed inset-0 bg-black/50 z-50 flex justify-end animate-fade-in" onClick={onClose}>
+      <div className="w-[440px] h-full glass-elevated border-l border-border overflow-y-auto animate-slide-in-right" onClick={e => e.stopPropagation()}>
+        <div className="px-5 py-4 border-b border-border flex items-center justify-between sticky top-0 bg-surface/95 z-10">
           <div className="flex items-center gap-2">
             <Building2 size={15} className="text-accent" />
             <h3 className="font-display font-semibold text-[15px]">{client.business_name}</h3>
           </div>
-          <button onClick={onClose} className="text-text-tertiary hover:text-text-primary"><X size={15} /></button>
+          <button onClick={onClose} className="text-text-tertiary hover:text-text-primary focus-ring rounded p-0.5"><X size={15} /></button>
         </div>
         <div className="p-5 space-y-4">
           <Section title="Contact">
@@ -852,7 +867,7 @@ function ClientProfileDrawer({ client, onClose }) {
             <Field label="Discovery Notes" value={client.discovery_notes} multiline />
             <Field label="Communication Preferences" value={client.communication_preferences} multiline />
           </Section>
-          <a href={`/management/portal-clients`} className="block text-center bg-elevated hover:bg-accent-muted text-accent text-[12px] font-semibold py-2.5 rounded">
+          <a href="/management/portal-clients" className="block text-center bg-elevated hover:bg-accent-muted text-accent text-[12px] font-semibold py-2.5 rounded focus-ring">
             Open Full Profile →
           </a>
         </div>
@@ -889,16 +904,10 @@ function Field({ icon: Icon, label, value, multiline }) {
 //  AI INSIGHTS PANEL
 // ══════════════════════════════════════════════════════════════
 function AIInsightsPanel({ onSelect }) {
-  const [requests, setRequests] = useState([])
-  const [metrics, setMetrics] = useState(null)
-  const [loading, setLoading] = useState(true)
+  const { data: reqData, isLoading: lr } = useServiceDeskRequests({ tab: 'all' })
+  const { data: metrics } = useServiceDeskMetrics()
 
-  useEffect(() => {
-    Promise.all([api('/requests?tab=all'), api('/metrics')])
-      .then(([r, m]) => { setRequests(r.requests || []); setMetrics(m); setLoading(false) })
-      .catch(() => setLoading(false))
-  }, [])
-
+  const requests = reqData?.requests || []
   const byPriority = useMemo(() => {
     const out = { urgent: 0, high: 0, medium: 0, low: 0 }
     for (const r of requests) out[r.priority] = (out[r.priority] || 0) + 1
@@ -910,25 +919,25 @@ function AIInsightsPanel({ onSelect }) {
       .sort((a, b) => new Date(a.created_at) - new Date(b.created_at)).slice(0, 5),
     [requests])
 
-  if (loading) return <div className="py-16 flex justify-center"><Loader2 size={20} className="animate-spin text-accent" /></div>
+  if (lr || !metrics) return <div className="py-16 flex justify-center"><Loader2 size={20} className="animate-spin text-accent" /></div>
 
   return (
     <div className="flex-1 overflow-y-auto p-6 space-y-6">
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <Stat label="Total" value={metrics?.total} icon={Inbox} />
-        <Stat label="Avg satisfaction" value={metrics?.avg_satisfaction ? `${metrics.avg_satisfaction}★` : '—'} icon={Star} accent="text-warning" />
+        <Stat label="Avg satisfaction" value={metrics?.avg_satisfaction ? `${metrics.avg_satisfaction}★` : '—'} icon={Sparkles} accent="text-warning" />
         <Stat label="Overdue (SLA)" value={metrics?.overdue} icon={AlertTriangle} accent="text-error" />
         <Stat label="Completed" value={metrics?.completed} icon={CheckCircle2} accent="text-success" />
       </div>
 
       <div className="grid md:grid-cols-2 gap-4">
-        <div className="bg-surface border border-border rounded-lg p-5">
+        <div className="card-premium">
           <h3 className="font-display font-semibold text-[14px] mb-3">By priority</h3>
           {['urgent','high','medium','low'].map(p => (
             <div key={p} className="flex items-center gap-3 mb-2.5">
               <span className={`text-[11px] uppercase tracking-wider w-16 ${PRIORITY_COLOR[p].split(' ')[1]}`}>{p}</span>
               <div className="flex-1 bg-elevated rounded h-2">
-                <div className={`h-2 rounded ${
+                <div className={`h-2 rounded transition-all ${
                   p === 'urgent' ? 'bg-error' : p === 'high' ? 'bg-warning' : p === 'medium' ? 'bg-accent' : 'bg-text-tertiary'
                 }`} style={{ width: `${requests.length ? Math.round((byPriority[p] / requests.length) * 100) : 0}%` }} />
               </div>
@@ -937,7 +946,7 @@ function AIInsightsPanel({ onSelect }) {
           ))}
         </div>
 
-        <div className="bg-surface border border-border rounded-lg p-5">
+        <div className="card-premium">
           <h3 className="font-display font-semibold text-[14px] mb-3">By assignee</h3>
           {Object.keys(metrics?.by_assignee || {}).length === 0 ? (
             <p className="text-[12px] text-text-tertiary">No requests assigned yet.</p>
@@ -952,7 +961,7 @@ function AIInsightsPanel({ onSelect }) {
         </div>
       </div>
 
-      <div className="bg-surface border border-border rounded-lg p-5">
+      <div className="card-premium">
         <h3 className="font-display font-semibold text-[14px] mb-3 flex items-center gap-2">
           <Clock size={13} className="text-warning" /> Oldest open requests
         </h3>
@@ -962,7 +971,7 @@ function AIInsightsPanel({ onSelect }) {
           <div className="space-y-1.5">
             {oldestOpen.map(r => (
               <button key={`${r.type}-${r.id}`} onClick={() => onSelect(r.type, r.id)}
-                className="w-full text-left flex items-center gap-3 p-2.5 rounded hover:bg-elevated">
+                className="w-full text-left flex items-center gap-3 p-2.5 rounded hover:bg-elevated focus-ring">
                 <span className={`text-[9px] uppercase tracking-wider px-1.5 py-0.5 rounded border ${PRIORITY_COLOR[r.priority] || PRIORITY_COLOR.medium}`}>{r.priority}</span>
                 <span className="text-[12px] text-text-primary flex-1 truncate">{r.subject}</span>
                 <span className="text-[11px] text-text-tertiary truncate max-w-[160px]">{r.client_name}</span>

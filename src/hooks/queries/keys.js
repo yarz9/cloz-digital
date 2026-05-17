@@ -32,6 +32,11 @@ export const qk = {
     detail: (id) => ['portal-clients', 'detail', id],
   },
 
+  operations: {
+    all:   ['operations'],
+    sops:  () => ['operations', 'sops'],
+  },
+
   knowledge: {
     all:        ['knowledge'],
     articles:   (filters = {}) => ['knowledge', 'articles', filters],
