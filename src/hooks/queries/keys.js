@@ -32,6 +32,15 @@ export const qk = {
     detail: (id) => ['portal-clients', 'detail', id],
   },
 
+  scout: {
+    all:        ['scout'],
+    meta:       () => ['scout', 'meta'],
+    leads:      (filters = {}) => ['scout', 'leads', filters],
+    lead:       (id) => ['scout', 'lead', id],
+    stats:      () => ['scout', 'stats'],
+    scanStatus: () => ['scout', 'scan-status'],
+  },
+
   operations: {
     all:   ['operations'],
     sops:  () => ['operations', 'sops'],

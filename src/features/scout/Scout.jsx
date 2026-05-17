@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect } from 'react'
 import {
   Search, MapPin, Globe, AlertCircle, Star, ExternalLink, Phone, Mail,
   Sparkles, Target, TrendingUp, X, Send, Loader2, RefreshCw, CheckCircle,
@@ -6,7 +6,14 @@ import {
   AlertTriangle, Clock, DollarSign, ChevronDown, ChevronRight,
   MapPinned, Award, ArrowRight, MessageSquare, Code, FileCode, Flame
 } from 'lucide-react'
-import { scout } from '@/lib/api'
+import { useToast } from '@/components/ui/Toast'
+import { Skeleton } from '@/components/ui/Skeleton'
+import {
+  useScoutMeta, useScoutLeads, useScoutStats, useScanStatus,
+  useStartScan, useStopScan, usePauseScan, useDiscoverLeads,
+  useAnalyzeLead, useChangeLeadStage, useDeleteLead,
+  useGenerateOutreach, useWebsiteReview, useRebuildPrompt,
+} from '@/hooks/queries/scout'
 
 // ══════════════════════════════════════════════════════════════
 //  CLIENT SCOUT — Lean AI-Powered Sales Engine
@@ -53,23 +60,17 @@ function fmtEur(n) { return n ? `€${n.toLocaleString()}` : '—' }
 // ══════════════════════════════════════════════════════════════
 
 export default function Scout() {
-  const [meta, setMeta] = useState({ countries: [], categories: [], statuses: [], modes: [], priorityCategories: [] })
-  const [leads, setLeads] = useState([])
-  const [stats, setStats] = useState({})
+  const toast = useToast()
   const [selectedLead, setSelectedLead] = useState(null)
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState('')
   const [activeTab, setActiveTab] = useState('discovery')
 
-  // Scan
-  const [scanStatus, setScanStatus] = useState({ running: false, paused: false, progress: {} })
+  // Scan controls (UI state — not server state)
   const [mode, setMode] = useState('auto')
   const [country, setCountry] = useState('bosnia')
   const [city, setCity] = useState('')
   const [category, setCategory] = useState('')
-  const pollRef = useRef(null)
 
-  // Filters
+  // Filters (UI state)
   const [filterStatus, setFilterStatus] = useState('')
   const [filterNoWebsite, setFilterNoWebsite] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
@@ -77,93 +78,85 @@ export default function Scout() {
   // Synthetic-lead visibility — defaults to OFF (real OSM leads only)
   const [showSynthetic, setShowSynthetic] = useState(false)
 
-  // Init
+  // ── Server state via TanStack Query ──
+  const metaQuery   = useScoutMeta()
+  const leadsQuery  = useScoutLeads({
+    sort,
+    ...(filterStatus    ? { status: filterStatus } : {}),
+    ...(filterNoWebsite ? { hasWebsite: 'false' } : {}),
+    ...(searchQuery     ? { search: searchQuery } : {}),
+    ...(showSynthetic   ? { onlySynthetic: 'true' } : {}),
+  })
+  const statsQuery  = useScoutStats()
+  const scanQuery   = useScanStatus()
+
+  // ── Mutations ──
+  const startScanMutation     = useStartScan()
+  const stopScanMutation      = useStopScan()
+  const pauseScanMutation     = usePauseScan()
+  const discoverMutation      = useDiscoverLeads()
+  const analyzeMutation       = useAnalyzeLead()
+  const changeStageMutation   = useChangeLeadStage()
+
+  const meta        = metaQuery.data || { countries: [], categories: [], statuses: [], modes: [], priorityCategories: [] }
+  const leads       = leadsQuery.data?.leads || []
+  const stats       = statsQuery.data || {}
+  const scanStatus  = scanQuery.data || { running: false, paused: false, progress: {} }
+  const loading     = leadsQuery.isFetching || discoverMutation.isPending
+
+  // When a scan ends, refresh the dependent lists. (refetchInterval
+  // already stops polling on its own; we just refresh leads + stats.)
   useEffect(() => {
-    scout.meta().then(setMeta).catch(() => {})
-    loadLeads()
-    loadStats()
-    return () => clearInterval(pollRef.current)
-  }, [])
-
-  const loadLeads = useCallback(async () => {
-    setLoading(true)
-    try {
-      const params = { sort, limit: 200 }
-      if (filterStatus) params.status = filterStatus
-      if (filterNoWebsite) params.hasWebsite = 'false'
-      if (searchQuery) params.search = searchQuery
-      if (showSynthetic) params.onlySynthetic = 'true'
-      const data = await scout.leads(params)
-      setLeads(data.leads || [])
-    } catch (e) { setError(e.message) }
-    finally { setLoading(false) }
-  }, [filterStatus, filterNoWebsite, sort, searchQuery, showSynthetic])
-
-  const loadStats = async () => {
-    try { setStats(await scout.stats()) } catch {}
-  }
-
-  useEffect(() => { loadLeads() }, [filterStatus, filterNoWebsite, sort, searchQuery, showSynthetic])
-
-  // Scan polling
-  const pollScan = useCallback(async () => {
-    try {
-      const s = await scout.scanStatus()
-      setScanStatus(s)
-      if (!s.running && !s.paused) {
-        clearInterval(pollRef.current)
-        pollRef.current = null
-        loadLeads()
-        loadStats()
-      }
-    } catch {}
-  }, [])
+    if (!scanStatus.running && !scanStatus.paused) {
+      leadsQuery.refetch()
+      statsQuery.refetch()
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [scanStatus.running, scanStatus.paused])
 
   const startScan = async () => {
-    setError('')
     try {
-      await scout.scanStart({ mode, country, city: city || undefined, category: category || undefined })
-      pollRef.current = setInterval(pollScan, 3000)
-      pollScan()
-    } catch (e) { setError(e.message) }
+      await startScanMutation.mutateAsync({ mode, country, city: city || undefined, category: category || undefined })
+      toast.info('Scan started', { description: 'Polling every 3s for progress.' })
+    } catch (e) { toast.error('Could not start scan', { description: e.message }) }
   }
 
   const stopScan = async (pause) => {
     try {
-      if (pause) await scout.pause()
-      else await scout.scanStop()
-      pollScan()
-      loadLeads()
-      loadStats()
-    } catch (e) { setError(e.message) }
+      if (pause) await pauseScanMutation.mutateAsync()
+      else       await stopScanMutation.mutateAsync()
+      toast.info(pause ? 'Scan paused' : 'Scan stopped')
+    } catch (e) { toast.error('Could not stop scan', { description: e.message }) }
   }
 
   const quickDiscover = async () => {
-    if (!category) return setError('Select a business category')
-    setError('')
-    setLoading(true)
+    if (!category) return toast.warning('Select a business category first.')
     try {
-      await scout.discover({ country, city: city || undefined, category, mode })
-      loadLeads()
-      loadStats()
-    } catch (e) { setError(e.message) }
-    finally { setLoading(false) }
+      const r = await discoverMutation.mutateAsync({ country, city: city || undefined, category, mode })
+      toast.success('Discovery complete', { description: `${r?.created ?? 0} new · ${r?.scanned ?? 0} scanned` })
+    } catch (e) { toast.error('Discovery failed', { description: e.message }) }
   }
 
   const analyzeLead = async (lead) => {
     setSelectedLead({ ...lead, _analyzing: true })
     try {
-      const result = await scout.analyze(lead.id)
-      const updated = { ...lead, ...result.analysis, _analyzing: false }
-      setSelectedLead(updated)
-      loadLeads()
-      loadStats()
+      const result = await analyzeMutation.mutateAsync(lead.id)
+      setSelectedLead({ ...lead, ...result.analysis, _analyzing: false })
     } catch (e) {
-      setError(e.message)
+      toast.error('AI analysis failed', { description: e.message })
       setSelectedLead(prev => prev ? { ...prev, _analyzing: false } : null)
     }
   }
 
+  const updateLead = async (id, patch) => {
+    if (patch.status) {
+      try { await changeStageMutation.mutateAsync({ id, stage: patch.status }) }
+      catch (e) { toast.error('Stage move failed', { description: e.message }) }
+    }
+    if (selectedLead?.id === id) setSelectedLead(prev => ({ ...prev, ...patch }))
+  }
+
+  const error = leadsQuery.error?.message || ''
   const countryData = meta.countries?.find(c => c.key === country)
   const cities = countryData?.cities || []
 
@@ -242,22 +235,22 @@ export default function Scout() {
                 {!scanStatus.running ? (
                   <>
                     <button onClick={quickDiscover} disabled={loading || !category}
-                      className="flex items-center gap-1.5 bg-elevated hover:bg-raised border border-border text-text-secondary disabled:opacity-40 px-3 py-2 rounded-md text-[12px] font-medium transition-colors flex-1">
-                      <Search size={13} />Quick Scan
+                      className="button-premium ghost !py-2 !px-3 focus-ring justify-center flex-1 disabled:opacity-40">
+                      {discoverMutation.isPending ? <Loader2 size={13} className="animate-spin" /> : <Search size={13} />}Quick Scan
                     </button>
-                    <button onClick={startScan}
-                      className="flex items-center gap-1.5 bg-accent hover:bg-accent-hover text-white px-4 py-2 rounded-md text-[12px] font-semibold transition-colors flex-1">
-                      <Play size={13} />Start Full Scan
+                    <button onClick={startScan} disabled={startScanMutation.isPending}
+                      className="button-premium !py-2 !px-4 focus-ring justify-center flex-1 disabled:opacity-50">
+                      {startScanMutation.isPending ? <Loader2 size={13} className="animate-spin" /> : <Play size={13} />}Start Full Scan
                     </button>
                   </>
                 ) : (
                   <>
-                    <button onClick={() => stopScan(true)}
-                      className="flex items-center gap-1.5 bg-warning/10 text-warning px-3 py-2 rounded-md text-[12px] font-medium flex-1">
+                    <button onClick={() => stopScan(true)} disabled={pauseScanMutation.isPending}
+                      className="flex items-center gap-1.5 bg-warning/10 text-warning px-3 py-2 rounded-md text-[12px] font-medium flex-1 focus-ring disabled:opacity-60">
                       <Pause size={13} />Pause
                     </button>
-                    <button onClick={() => stopScan(false)}
-                      className="flex items-center gap-1.5 bg-error/10 text-error px-3 py-2 rounded-md text-[12px] font-medium flex-1">
+                    <button onClick={() => stopScan(false)} disabled={stopScanMutation.isPending}
+                      className="flex items-center gap-1.5 bg-error/10 text-error px-3 py-2 rounded-md text-[12px] font-medium flex-1 focus-ring disabled:opacity-60">
                       <Square size={12} />Stop
                     </button>
                   </>
@@ -493,11 +486,27 @@ function DashboardWidgets({ stats, onSelectLead }) {
 
 function LeadList({ leads, loading, selectedId, onSelect }) {
   if (loading && leads.length === 0) {
-    return <div className="flex items-center justify-center h-32"><Loader2 size={20} className="animate-spin text-text-tertiary" /></div>
+    return (
+      <div className="flex-1 overflow-hidden">
+        {Array.from({ length: 8 }).map((_, i) => (
+          <div key={i} className="px-3 py-2.5 border-b border-border space-y-1.5">
+            <div className="flex items-center justify-between">
+              <Skeleton className="h-3 w-1/2" />
+              <Skeleton className="h-3 w-8" />
+            </div>
+            <Skeleton className="h-2 w-2/3" />
+            <div className="flex gap-1.5 mt-1.5">
+              <Skeleton className="h-3 w-14 rounded" />
+              <Skeleton className="h-3 w-12 rounded" />
+            </div>
+          </div>
+        ))}
+      </div>
+    )
   }
   if (leads.length === 0) {
     return (
-      <div className="p-8 text-center flex-1">
+      <div className="p-8 text-center flex-1 animate-fade-up">
         <Radar size={28} className="text-text-tertiary mx-auto mb-3 opacity-30" />
         <p className="text-[13px] text-text-tertiary mb-1">No leads found</p>
         <p className="text-[11px] text-text-tertiary">Go to Discovery to scan for businesses</p>
@@ -509,7 +518,9 @@ function LeadList({ leads, loading, selectedId, onSelect }) {
     <div className="flex-1 overflow-y-auto">
       {leads.map(lead => (
         <button key={lead.id} onClick={() => onSelect(lead)}
-          className={`w-full text-left px-3 py-2.5 border-b border-border hover:bg-surface/60 transition-colors ${selectedId === lead.id ? 'bg-surface' : ''}`}>
+          className={`w-full text-left px-3 py-2.5 border-b border-border hover:bg-surface/60 transition-colors focus-ring ${
+            selectedId === lead.id ? 'bg-surface' : ''
+          } ${lead._optimistic ? 'opacity-70' : ''}`}>
           <div className="flex items-start justify-between mb-0.5">
             <div className="flex items-center gap-2 min-w-0">
               <span className="text-[13px] font-medium truncate">{lead.business_name}</span>
@@ -622,16 +633,23 @@ function PipelineView({ leads, stats, onSelect }) {
 // ══════════════════════════════════════════════════════════════
 
 function LeadDetail({ lead, onClose, onAnalyze, onUpdate }) {
+  const toast = useToast()
+  const stageMutation     = useChangeLeadStage()
+  const outreachMutation  = useGenerateOutreach()
+  const reviewMutation    = useWebsiteReview()
+  const rebuildMutation   = useRebuildPrompt()
+
   const [tab, setTab] = useState('overview')
   const [outreach, setOutreach] = useState(null)
-  const [outreachLoading, setOutreachLoading] = useState(false)
   const [style, setStyle] = useState('professional')
   const [copied, setCopied] = useState('')
   const [websiteReview, setWebsiteReview] = useState(null)
-  const [reviewLoading, setReviewLoading] = useState(false)
   const [rebuildPrompt, setRebuildPrompt] = useState(null)
   const [promptVariant, setPromptVariant] = useState('detailed')
-  const [promptLoading, setPromptLoading] = useState(false)
+
+  const outreachLoading = outreachMutation.isPending
+  const reviewLoading   = reviewMutation.isPending
+  const promptLoading   = rebuildMutation.isPending
 
   const tabs = [
     { key: 'overview', label: 'Overview',    icon: Eye },
@@ -646,39 +664,35 @@ function LeadDetail({ lead, onClose, onAnalyze, onUpdate }) {
     setTab('overview')
   }, [lead.id])
 
+  // Stage move is optimistic via the hook; we still mirror to parent
+  // so the in-place detail header re-renders without a refetch.
   const changeStage = async (newStatus) => {
     try {
-      await scout.changeStage(lead.id, { stage: newStatus })
+      await stageMutation.mutateAsync({ id: lead.id, stage: newStatus })
       onUpdate({ ...lead, status: newStatus })
-    } catch {}
+    } catch (e) { toast.error('Stage move failed', { description: e.message }) }
   }
 
   const generateOutreach = async () => {
-    setOutreachLoading(true)
     try {
-      const result = await scout.generateOutreach(lead.id, { style })
+      const result = await outreachMutation.mutateAsync({ id: lead.id, style })
       setOutreach(result.outreach || result)
-    } catch {}
-    setOutreachLoading(false)
+    } catch (e) { toast.error('Outreach failed', { description: e.message }) }
   }
 
   const runWebsiteReview = async () => {
     if (!lead.website_url) return
-    setReviewLoading(true)
     try {
-      const result = await scout.websiteReview(lead.id)
+      const result = await reviewMutation.mutateAsync(lead.id)
       setWebsiteReview(result.review || result)
-    } catch {}
-    setReviewLoading(false)
+    } catch (e) { toast.error('Website review failed', { description: e.message }) }
   }
 
   const generateRebuildPrompt = async () => {
-    setPromptLoading(true)
     try {
-      const result = await scout.rebuildPrompt(lead.id, { variant: promptVariant })
+      const result = await rebuildMutation.mutateAsync({ id: lead.id, variant: promptVariant })
       setRebuildPrompt(result.prompt || result)
-    } catch {}
-    setPromptLoading(false)
+    } catch (e) { toast.error('Prompt build failed', { description: e.message }) }
   }
 
   const copyText = (text, label) => {
