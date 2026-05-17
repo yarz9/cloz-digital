@@ -65,6 +65,7 @@ import Marketing from './features/marketing/Marketing'
 import PortalClients from './features/management/PortalClients'
 import ServiceDesk from './features/management/ServiceDesk'
 import Localization from './features/management/Localization'
+import KnowledgeCenter from './features/management/KnowledgeCenter'
 import Operations from './features/operations/Operations'
 import Legal from './features/legal/Legal'
 import PortalLayout from './features/portal/PortalLayout'
@@ -164,7 +165,7 @@ export default function App() {
         {/* Intelligence */}
         <Route path="analytics" element={<Analytics />} />
         <Route path="reports" element={<Reports />} />
-        <Route path="knowledge" element={<Knowledge />} />
+        <Route path="knowledge" element={<KnowledgeCenter />} />
         <Route path="insights" element={<AIInsights />} />
         <Route path="audit" element={<AuditLab />} />
 

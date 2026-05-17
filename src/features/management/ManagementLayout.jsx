@@ -84,7 +84,7 @@ const sections = [
       { to: '/management/audit', icon: Scan, label: 'Audit Lab' },
       { to: '/management/analytics', icon: BarChart3, label: 'Analytics' },
       { to: '/management/reports', icon: FileBarChart, label: 'Reports' },
-      { to: '/management/knowledge', icon: BookOpen, label: 'Knowledge Base' },
+      { to: '/management/knowledge', icon: BookOpen, label: 'Knowledge Center' },
       { to: '/management/insights', icon: Brain, label: 'AI Insights' },
     ]
   },

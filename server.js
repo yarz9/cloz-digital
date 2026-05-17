@@ -57,6 +57,8 @@ import { logStorageInfo } from './database/storageInfo.js';
 import adminDataRoutes from './routes/adminData.js';
 import serviceDeskRoutes from './routes/serviceDesk.js';
 import localizationRoutes from './routes/localization.js';
+import knowledgeRoutes from './routes/knowledge.js';
+import { seedKnowledge } from './database/seedKnowledge.js';
 import rateLimit from 'express-rate-limit';
 import { APP_URL, REDIRECT_HOSTS } from './config/urls.js';
 
@@ -132,6 +134,7 @@ app.use('/api/operations', apiLimiter, operationsRoutes);
 app.use('/api/legal', apiLimiter, legalRoutes);
 app.use('/api/service-desk', apiLimiter, serviceDeskRoutes);
 app.use('/api/localization', apiLimiter, localizationRoutes);
+app.use('/api/knowledge', apiLimiter, knowledgeRoutes);
 
 // ── Public inquiry endpoint: stricter rate limit to deter abuse ──
 const inquiryLimiter = rateLimit({
@@ -200,6 +203,7 @@ process.on('unhandledRejection', (reason) => {
     seedDefaults(db);
     seedMailAccounts(db);
     seedOps(db);
+    seedKnowledge(db);
 
     // Invalidate any portal magic links issued before the canonical-URL fix.
     // Those emails contained verify URLs on the unregistered subdomain and

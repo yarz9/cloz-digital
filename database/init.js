@@ -610,6 +610,217 @@ export async function initDatabase() {
     try { rawDb.run(`ALTER TABLE portal_messages ADD COLUMN ${col} ${typedef}`); } catch {}
   }
 
+  // ══════════════════════════════════════════════════════════════
+  //  KNOWLEDGE CENTER — KB, Academy, Playbooks, Prompts, Copilot, RAG
+  // ══════════════════════════════════════════════════════════════
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS kb_articles (
+      id TEXT PRIMARY KEY,
+      slug TEXT UNIQUE NOT NULL,
+      title TEXT NOT NULL,
+      category TEXT DEFAULT 'general',
+      body TEXT DEFAULT '',
+      excerpt TEXT DEFAULT '',
+      tags TEXT DEFAULT '[]',
+      status TEXT DEFAULT 'draft',
+      visibility TEXT DEFAULT 'internal',
+      author TEXT DEFAULT '',
+      version INTEGER DEFAULT 1,
+      view_count INTEGER DEFAULT 0,
+      favorite_count INTEGER DEFAULT 0,
+      parent_id TEXT DEFAULT '',
+      reviewer TEXT DEFAULT '',
+      review_due TEXT DEFAULT '',
+      created_at TEXT DEFAULT (datetime('now')),
+      updated_at TEXT DEFAULT (datetime('now')),
+      published_at TEXT DEFAULT ''
+    );
+    CREATE INDEX IF NOT EXISTS idx_kb_articles_status ON kb_articles(status);
+    CREATE INDEX IF NOT EXISTS idx_kb_articles_category ON kb_articles(category);
+
+    CREATE TABLE IF NOT EXISTS kb_article_versions (
+      id TEXT PRIMARY KEY,
+      article_id TEXT NOT NULL,
+      version INTEGER NOT NULL,
+      title TEXT DEFAULT '',
+      body TEXT DEFAULT '',
+      author TEXT DEFAULT '',
+      change_note TEXT DEFAULT '',
+      created_at TEXT DEFAULT (datetime('now'))
+    );
+    CREATE INDEX IF NOT EXISTS idx_kb_article_versions_article ON kb_article_versions(article_id);
+
+    CREATE TABLE IF NOT EXISTS kb_comments (
+      id TEXT PRIMARY KEY,
+      article_id TEXT NOT NULL,
+      author TEXT DEFAULT '',
+      body TEXT NOT NULL,
+      resolved INTEGER DEFAULT 0,
+      created_at TEXT DEFAULT (datetime('now'))
+    );
+    CREATE INDEX IF NOT EXISTS idx_kb_comments_article ON kb_comments(article_id);
+
+    CREATE TABLE IF NOT EXISTS kb_favorites (
+      id TEXT PRIMARY KEY,
+      user_name TEXT NOT NULL,
+      article_id TEXT NOT NULL,
+      created_at TEXT DEFAULT (datetime('now'))
+    );
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_kb_fav_user_article ON kb_favorites(user_name, article_id);
+
+    CREATE TABLE IF NOT EXISTS kb_courses (
+      id TEXT PRIMARY KEY,
+      slug TEXT UNIQUE NOT NULL,
+      title TEXT NOT NULL,
+      category TEXT DEFAULT 'general',
+      description TEXT DEFAULT '',
+      level TEXT DEFAULT 'beginner',
+      est_minutes INTEGER DEFAULT 30,
+      cover_emoji TEXT DEFAULT '📘',
+      published INTEGER DEFAULT 1,
+      author TEXT DEFAULT '',
+      created_at TEXT DEFAULT (datetime('now')),
+      updated_at TEXT DEFAULT (datetime('now'))
+    );
+
+    CREATE TABLE IF NOT EXISTS kb_lessons (
+      id TEXT PRIMARY KEY,
+      course_id TEXT NOT NULL,
+      position INTEGER NOT NULL DEFAULT 0,
+      title TEXT NOT NULL,
+      body TEXT DEFAULT '',
+      video_url TEXT DEFAULT '',
+      attachment_url TEXT DEFAULT '',
+      est_minutes INTEGER DEFAULT 5,
+      created_at TEXT DEFAULT (datetime('now'))
+    );
+    CREATE INDEX IF NOT EXISTS idx_kb_lessons_course ON kb_lessons(course_id);
+
+    CREATE TABLE IF NOT EXISTS kb_quizzes (
+      id TEXT PRIMARY KEY,
+      lesson_id TEXT NOT NULL,
+      position INTEGER DEFAULT 0,
+      question TEXT NOT NULL,
+      options TEXT DEFAULT '[]',
+      answer_index INTEGER DEFAULT 0,
+      explanation TEXT DEFAULT '',
+      created_at TEXT DEFAULT (datetime('now'))
+    );
+    CREATE INDEX IF NOT EXISTS idx_kb_quizzes_lesson ON kb_quizzes(lesson_id);
+
+    CREATE TABLE IF NOT EXISTS kb_enrollments (
+      id TEXT PRIMARY KEY,
+      user_name TEXT NOT NULL,
+      course_id TEXT NOT NULL,
+      status TEXT DEFAULT 'in_progress',
+      progress_pct INTEGER DEFAULT 0,
+      enrolled_at TEXT DEFAULT (datetime('now')),
+      completed_at TEXT DEFAULT '',
+      certificate_id TEXT DEFAULT ''
+    );
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_kb_enrollments_user_course ON kb_enrollments(user_name, course_id);
+
+    CREATE TABLE IF NOT EXISTS kb_lesson_progress (
+      id TEXT PRIMARY KEY,
+      user_name TEXT NOT NULL,
+      lesson_id TEXT NOT NULL,
+      completed INTEGER DEFAULT 0,
+      quiz_score INTEGER DEFAULT 0,
+      quiz_total INTEGER DEFAULT 0,
+      completed_at TEXT DEFAULT (datetime('now'))
+    );
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_kb_lprog_user_lesson ON kb_lesson_progress(user_name, lesson_id);
+
+    CREATE TABLE IF NOT EXISTS kb_certificates (
+      id TEXT PRIMARY KEY,
+      user_name TEXT NOT NULL,
+      course_id TEXT NOT NULL,
+      course_title TEXT NOT NULL,
+      score INTEGER DEFAULT 0,
+      issued_at TEXT DEFAULT (datetime('now'))
+    );
+
+    CREATE TABLE IF NOT EXISTS kb_playbooks (
+      id TEXT PRIMARY KEY,
+      slug TEXT UNIQUE NOT NULL,
+      title TEXT NOT NULL,
+      category TEXT DEFAULT 'general',
+      summary TEXT DEFAULT '',
+      body TEXT DEFAULT '',
+      steps TEXT DEFAULT '[]',
+      tags TEXT DEFAULT '[]',
+      author TEXT DEFAULT '',
+      use_count INTEGER DEFAULT 0,
+      created_at TEXT DEFAULT (datetime('now')),
+      updated_at TEXT DEFAULT (datetime('now'))
+    );
+
+    CREATE TABLE IF NOT EXISTS kb_prompts (
+      id TEXT PRIMARY KEY,
+      slug TEXT UNIQUE NOT NULL,
+      title TEXT NOT NULL,
+      category TEXT DEFAULT 'general',
+      body TEXT NOT NULL,
+      variables TEXT DEFAULT '[]',
+      tags TEXT DEFAULT '[]',
+      use_count INTEGER DEFAULT 0,
+      author TEXT DEFAULT '',
+      created_at TEXT DEFAULT (datetime('now')),
+      updated_at TEXT DEFAULT (datetime('now'))
+    );
+
+    CREATE TABLE IF NOT EXISTS kb_search_log (
+      id TEXT PRIMARY KEY,
+      query TEXT NOT NULL,
+      user_name TEXT DEFAULT '',
+      result_count INTEGER DEFAULT 0,
+      created_at TEXT DEFAULT (datetime('now'))
+    );
+    CREATE INDEX IF NOT EXISTS idx_kb_search_log_created ON kb_search_log(created_at);
+
+    CREATE TABLE IF NOT EXISTS kb_copilot_sessions (
+      id TEXT PRIMARY KEY,
+      user_name TEXT DEFAULT '',
+      title TEXT DEFAULT '',
+      created_at TEXT DEFAULT (datetime('now')),
+      updated_at TEXT DEFAULT (datetime('now'))
+    );
+
+    CREATE TABLE IF NOT EXISTS kb_copilot_messages (
+      id TEXT PRIMARY KEY,
+      session_id TEXT NOT NULL,
+      role TEXT NOT NULL,
+      content TEXT NOT NULL,
+      sources TEXT DEFAULT '[]',
+      created_at TEXT DEFAULT (datetime('now'))
+    );
+    CREATE INDEX IF NOT EXISTS idx_kb_copilot_msgs_session ON kb_copilot_messages(session_id);
+
+    CREATE TABLE IF NOT EXISTS kb_chunks (
+      id TEXT PRIMARY KEY,
+      doc_type TEXT NOT NULL,
+      doc_id TEXT NOT NULL,
+      doc_title TEXT DEFAULT '',
+      chunk_index INTEGER DEFAULT 0,
+      content TEXT NOT NULL,
+      tokens_lower TEXT DEFAULT '',
+      created_at TEXT DEFAULT (datetime('now'))
+    );
+    CREATE INDEX IF NOT EXISTS idx_kb_chunks_doc ON kb_chunks(doc_type, doc_id);
+
+    CREATE TABLE IF NOT EXISTS kb_content_assets (
+      id TEXT PRIMARY KEY,
+      title TEXT NOT NULL,
+      kind TEXT DEFAULT 'document',
+      url TEXT DEFAULT '',
+      category TEXT DEFAULT 'general',
+      description TEXT DEFAULT '',
+      tags TEXT DEFAULT '[]',
+      author TEXT DEFAULT '',
+      created_at TEXT DEFAULT (datetime('now'))
+    );
+  `);
+
   // ── Localization overrides (admin edits to bundled dictionary) ──
   db.exec(`
     CREATE TABLE IF NOT EXISTS i18n_overrides (
