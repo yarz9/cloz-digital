@@ -36,38 +36,44 @@ export default function HomePage() {
 function Hero() {
   const t = useT()
   return (
-    <section className="relative pt-32 pb-24 md:pt-40 md:pb-32 px-6 overflow-hidden">
+    <section className="relative pt-32 pb-24 md:pt-40 md:pb-32 px-6 overflow-hidden section-glow">
+      {/* Layered ambient lights */}
       <div className="absolute inset-0 pointer-events-none" aria-hidden="true">
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[800px] rounded-full opacity-[0.08]"
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[1000px] h-[1000px] rounded-full opacity-[0.10] animate-glow-pulse"
           style={{ background: 'radial-gradient(circle, var(--color-accent) 0%, transparent 60%)' }} />
+        <div className="absolute top-20 right-1/4 w-[400px] h-[400px] rounded-full opacity-[0.05]"
+          style={{ background: 'radial-gradient(circle, #B594D6 0%, transparent 60%)' }} />
       </div>
+
       <div className="relative max-w-[1200px] mx-auto">
         <div className="max-w-[820px]">
-          <div className="inline-flex items-center gap-2 px-3 py-1 mb-6 rounded-full bg-accent-muted border border-accent/20">
-            <span className="w-1.5 h-1.5 rounded-full bg-accent animate-pulse" />
+          <div className="inline-flex items-center gap-2 px-3 py-1 mb-6 rounded-full bg-accent-muted border border-accent/20 animate-fade-up">
+            <span className="w-1.5 h-1.5 rounded-full bg-accent animate-glow-pulse" />
             <span className="text-[11px] font-medium text-accent uppercase tracking-wider">{t('home.hero.eyebrow')}</span>
           </div>
-          <h1 className="font-display font-bold text-[44px] md:text-[64px] leading-[1.05] tracking-tight">
+
+          <h1 className="font-display font-bold text-[44px] md:text-[64px] leading-[1.05] tracking-tight animate-fade-up stagger-1">
             {t('home.hero.h1.line1')}<br />
-            <span className="text-accent">{t('home.hero.h1.line2')}</span><br />
+            <span className="text-gradient">{t('home.hero.h1.line2')}</span><br />
             {t('home.hero.h1.line3')}
           </h1>
-          <p className="mt-7 text-[16px] md:text-[18px] text-text-secondary leading-relaxed max-w-[640px]">
+
+          <p className="mt-7 text-[16px] md:text-[18px] text-text-secondary leading-relaxed max-w-[640px] animate-fade-up stagger-2">
             {t('home.hero.sub')}
           </p>
-          <div className="mt-10 flex flex-col sm:flex-row gap-3">
-            <Link to="/contact"
-              className="inline-flex items-center justify-center gap-2 bg-accent hover:bg-accent-hover text-white px-6 py-3.5 rounded-md text-[14px] font-semibold transition-all hover:translate-y-[-1px] hover:shadow-[0_8px_24px_rgba(94,141,181,0.25)]">
+
+          <div className="mt-10 flex flex-col sm:flex-row gap-3 animate-fade-up stagger-3">
+            <Link to="/contact" className="button-premium focus-ring">
               {t('home.hero.ctaPrimary')}
               <ArrowUpRight size={15} />
             </Link>
-            <a href="#packages"
-              className="inline-flex items-center justify-center gap-2 bg-elevated hover:bg-raised border border-border text-text-primary px-6 py-3.5 rounded-md text-[14px] font-medium transition-colors">
+            <a href="#packages" className="button-premium ghost focus-ring">
               {t('home.hero.ctaSecondary')}
               <ArrowRight size={14} />
             </a>
           </div>
-          <div className="mt-12 flex flex-wrap items-center gap-x-8 gap-y-3 text-[12px] text-text-tertiary">
+
+          <div className="mt-12 flex flex-wrap items-center gap-x-8 gap-y-3 text-[12px] text-text-tertiary animate-fade-up stagger-4">
             <span className="flex items-center gap-1.5"><Check size={12} className="text-accent" /> {t('home.hero.trust1')}</span>
             <span className="flex items-center gap-1.5"><Check size={12} className="text-accent" /> {t('home.hero.trust2')}</span>
             <span className="flex items-center gap-1.5"><Check size={12} className="text-accent" /> {t('home.hero.trust3')}</span>

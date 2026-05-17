@@ -2,6 +2,7 @@ import { Outlet, NavLink, useLocation } from 'react-router-dom'
 import { useState, useEffect } from 'react'
 import ManagementLogin from './ManagementLogin'
 import { useUser } from '@/contexts/UserContext'
+import { useCommandPalette } from '@/components/ui/CommandPalette'
 import {
   LayoutDashboard, Command, Search, GitBranch, Users, FileText, Send, Receipt,
   Globe, Server, Wrench, CheckSquare, Palette, FileBarChart, BookOpen, BarChart3,
@@ -115,6 +116,7 @@ const sections = [
 export default function ManagementLayout() {
   const location = useLocation()
   const { user, clearUser } = useUser()
+  const { open: openPalette } = useCommandPalette()
   const [collapsed, setCollapsed] = useState({})
   const [authenticated, setAuthenticated] = useState(null) // null = checking, true/false
 
@@ -163,6 +165,17 @@ export default function ManagementLayout() {
             MGT
           </span>
         </div>
+
+        {/* Command palette quick-open */}
+        <button onClick={openPalette}
+          className="mx-3 mt-2.5 group flex items-center gap-2 px-2.5 py-1.5 rounded-md bg-elevated hover:bg-raised border border-border text-text-tertiary hover:text-text-primary transition-colors focus-ring"
+          aria-label="Open command palette">
+          <Search size={12} />
+          <span className="text-[11px] flex-1 text-left">Search or jump to…</span>
+          <span className="flex items-center gap-0.5">
+            <kbd className="kbd">⌘</kbd><kbd className="kbd">K</kbd>
+          </span>
+        </button>
 
         {/* Active operator */}
         {user && (
