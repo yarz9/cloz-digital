@@ -9,7 +9,7 @@ import {
   CreditCard, PieChart, Shield, Share2, Compass, Brain, Activity,
   Database, ToggleLeft, TestTube, ScrollText, ChevronDown, ChevronRight,
   Sparkles, Building2, Calendar, TrendingUp, Eye, Scan, Mail, Radio,
-  Inbox,
+  Inbox, Languages,
 } from 'lucide-react'
 
 const sections = [
@@ -72,6 +72,7 @@ const sections = [
     title: 'Content & Marketing',
     items: [
       { to: '/management/marketing', icon: TrendingUp, label: 'Marketing OS' },
+      { to: '/management/localization', icon: Languages, label: 'Localization' },
       { to: '/management/content', icon: Palette, label: 'Content Studio' },
       { to: '/management/social', icon: Share2, label: 'Social Planner' },
       { to: '/management/seo', icon: Compass, label: 'SEO Dashboard' },

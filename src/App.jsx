@@ -64,6 +64,7 @@ import Inquiries from './features/management/Inquiries'
 import Marketing from './features/marketing/Marketing'
 import PortalClients from './features/management/PortalClients'
 import ServiceDesk from './features/management/ServiceDesk'
+import Localization from './features/management/Localization'
 import Operations from './features/operations/Operations'
 import Legal from './features/legal/Legal'
 import PortalLayout from './features/portal/PortalLayout'
@@ -183,6 +184,7 @@ export default function App() {
         <Route path="portal-clients" element={<PortalClients />} />
         <Route path="service-desk" element={<ServiceDesk />} />
         <Route path="service-desk/:type/:id" element={<ServiceDesk />} />
+        <Route path="localization" element={<Localization />} />
         <Route path="operations" element={<Operations />} />
         <Route path="legal" element={<Legal />} />
       </Route>

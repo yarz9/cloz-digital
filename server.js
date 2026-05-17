@@ -56,6 +56,7 @@ import { seedOps } from './database/seedOps.js';
 import { logStorageInfo } from './database/storageInfo.js';
 import adminDataRoutes from './routes/adminData.js';
 import serviceDeskRoutes from './routes/serviceDesk.js';
+import localizationRoutes from './routes/localization.js';
 import rateLimit from 'express-rate-limit';
 import { APP_URL, REDIRECT_HOSTS } from './config/urls.js';
 
@@ -130,6 +131,7 @@ app.use('/api/portal-admin', apiLimiter, portalAdminRoutes);
 app.use('/api/operations', apiLimiter, operationsRoutes);
 app.use('/api/legal', apiLimiter, legalRoutes);
 app.use('/api/service-desk', apiLimiter, serviceDeskRoutes);
+app.use('/api/localization', apiLimiter, localizationRoutes);
 
 // ── Public inquiry endpoint: stricter rate limit to deter abuse ──
 const inquiryLimiter = rateLimit({

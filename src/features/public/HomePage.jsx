@@ -2,132 +2,19 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import {
   ArrowUpRight, ArrowRight, Check, Globe, Paintbrush, Shield, RefreshCw,
-  Zap, Monitor, Search, Mail, Compass, PenTool, Code2, Rocket, HeartPulse,
+  Mail, Compass, PenTool, Code2, Rocket, HeartPulse,
   Plus, Minus, Sparkles, MapPin, Languages, Smartphone, Gauge, Clock,
-  CheckCircle2, Lock, ShieldCheck, MessageCircle, FileText, Calendar,
+  CheckCircle2, Lock, ShieldCheck, MessageCircle, FileText, Calendar, Search,
 } from 'lucide-react'
+import { useT } from '@/i18n/I18nProvider'
 
 // ══════════════════════════════════════════════════════════════
-//  HOMEPAGE — Production Landing Page
-//  Premium positioning. Real packages. No fabricated portfolio.
-// ══════════════════════════════════════════════════════════════
-
-const services = [
-  { icon: Paintbrush, title: 'Website Design',          desc: 'Custom-built sites that reflect the quality of your business — no templates, no shortcuts.' },
-  { icon: RefreshCw,  title: 'Redesigns',               desc: 'Modernize an outdated presence into a conversion-focused, fast, mobile-first site.' },
-  { icon: Globe,      title: 'Hosting & Setup',         desc: 'Fast, secure hosting with proper DNS, SSL, and deployment — fully managed.' },
-  { icon: Shield,     title: 'Ongoing Maintenance',     desc: 'Updates, backups, security patches, and content edits — handled so you never worry.' },
-  { icon: Search,     title: 'SEO Optimization',        desc: 'Technical SEO, structured data, performance tuning, and on-page strategy that compounds.' },
-  { icon: Mail,       title: 'Email Setup',             desc: 'Professional inboxes on your domain (info@, sales@, anything you need) — properly authenticated.' },
-  { icon: HeartPulse, title: 'Ongoing Support',         desc: 'A real team you can email or call when something matters — same-day responses on care plans.' },
-]
-
-const packages = [
-  {
-    name: 'Launch Care',
-    price: '800 BAM',
-    priceUnit: 'one-time',
-    desc: 'Your first professional website, done right.',
-    features: [
-      'Custom design (up to 5 pages)',
-      'Mobile-first responsive layout',
-      'Basic SEO setup',
-      'Contact form integration',
-      'Hosting setup included',
-      '30 days post-launch support',
-    ],
-    cta: 'Get Launch Care',
-    highlighted: false,
-  },
-  {
-    name: 'Growth Care',
-    price: '1,500 BAM',
-    priceUnit: 'one-time',
-    desc: 'For businesses ready to grow their online presence seriously.',
-    features: [
-      'Full custom design (up to 12 pages)',
-      'Advanced responsive design',
-      'SEO foundation + analytics',
-      'CMS integration',
-      'Performance optimization',
-      '3 months maintenance included',
-      'Priority support',
-    ],
-    cta: 'Get Growth Care',
-    highlighted: true,
-  },
-  {
-    name: 'Presence Care',
-    price: '200 BAM',
-    priceUnit: 'per month',
-    desc: 'Ongoing care for an existing site you want managed properly.',
-    features: [
-      'Hosting and SSL management',
-      'Weekly backups',
-      'Security monitoring & patches',
-      'Content updates (2 per month)',
-      'Uptime monitoring',
-      'Same-day email support',
-    ],
-    cta: 'Start Presence Care',
-    highlighted: false,
-  },
-]
-
-const differentiators = [
-  { icon: Sparkles,   title: 'Premium Design',        desc: 'Hand-built layouts that look modern, refined, and intentional — never generic.' },
-  { icon: Gauge,      title: 'Fast Performance',      desc: 'Optimized assets, lean code, and CDN delivery. Sites that load in under two seconds.' },
-  { icon: Smartphone, title: 'Mobile-First',          desc: 'Designed for the device most of your visitors actually use. Pixel-perfect everywhere.' },
-  { icon: Search,     title: 'SEO-Ready',             desc: 'Semantic markup, structured data, performance, and on-page strategy from day one.' },
-  { icon: HeartPulse, title: 'Real Ongoing Support',  desc: 'A human team — not a ticket queue. Same-day responses on every care plan.' },
-  { icon: Languages,  title: 'Bosnian & English',     desc: 'Native support in both languages. Local understanding, international quality.' },
-]
-
-const process = [
-  { num: '01', icon: Compass,    title: 'Discovery',   desc: 'We learn your business, audience, and goals. A free consultation defines scope and outcomes.' },
-  { num: '02', icon: PenTool,    title: 'Design',      desc: 'Custom layouts and visual direction built around your brand — reviewed and refined together.' },
-  { num: '03', icon: Code2,      title: 'Development', desc: 'Clean, fast, accessible code. SEO, analytics, and integrations wired up properly.' },
-  { num: '04', icon: Rocket,     title: 'Launch',      desc: 'Deployment, DNS, SSL, and a full QA pass. You go live with a site that is ready for visitors.' },
-  { num: '05', icon: HeartPulse, title: 'Ongoing Care',desc: 'Updates, monitoring, and content changes — your site stays healthy without your attention.' },
-]
-
-const faqs = [
-  {
-    q: 'How much does a website cost?',
-    a: 'Launch Care starts at 800 BAM for a complete 5-page site. Growth Care is 1,500 BAM for a larger 12-page build. Presence Care is 200 BAM/month for ongoing management of an existing site. Every quote includes a clear scope — no surprises.',
-  },
-  {
-    q: 'How long does a project take?',
-    a: 'Launch Care typically delivers in 2–3 weeks. Growth Care takes 4–6 weeks depending on scope. We agree on a timeline at the start and keep you updated throughout.',
-  },
-  {
-    q: 'Is hosting included?',
-    a: 'Yes. Both Launch Care and Growth Care include hosting setup, SSL, and proper domain configuration. After the included support window, hosting can continue under a Presence Care plan.',
-  },
-  {
-    q: 'How many revisions do I get?',
-    a: 'Every package includes design revisions during the design phase — we work iteratively with you until the direction is right. Major scope changes after sign-off are handled transparently.',
-  },
-  {
-    q: 'What about ongoing maintenance after launch?',
-    a: 'Launch Care includes 30 days of post-launch support. Growth Care includes 3 months. After that, Presence Care keeps your site updated, secure, and maintained for 200 BAM/month.',
-  },
-  {
-    q: 'Who owns the website when it is done?',
-    a: 'You do. Code, content, domain, and hosting credentials are all yours. We do not hold your site hostage.',
-  },
-  {
-    q: 'Do you work with businesses outside Bosnia?',
-    a: 'Yes — we work with clients across the Balkans and internationally. All communication happens in Bosnian, English, or both, depending on your preference.',
-  },
-]
-
+//  HOMEPAGE — Production Landing Page (fully localized)
 // ══════════════════════════════════════════════════════════════
 
 export default function HomePage() {
-  useEffect(() => {
-    document.title = 'Cloz Digital — Premium Web Design, Hosting & Ongoing Care'
-  }, [])
+  const t = useT()
+  useEffect(() => { document.title = t('home.title') }, [t])
 
   return (
     <div className="bg-bg text-text-primary">
@@ -146,59 +33,45 @@ export default function HomePage() {
 }
 
 // ══════════════════════════════════════════════════════════════
-//  HERO
-// ══════════════════════════════════════════════════════════════
-
 function Hero() {
+  const t = useT()
   return (
     <section className="relative pt-32 pb-24 md:pt-40 md:pb-32 px-6 overflow-hidden">
-      {/* Background gradient accent */}
       <div className="absolute inset-0 pointer-events-none" aria-hidden="true">
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[800px] rounded-full opacity-[0.08]"
           style={{ background: 'radial-gradient(circle, var(--color-accent) 0%, transparent 60%)' }} />
       </div>
-
       <div className="relative max-w-[1200px] mx-auto">
         <div className="max-w-[820px]">
-          {/* Eyebrow */}
           <div className="inline-flex items-center gap-2 px-3 py-1 mb-6 rounded-full bg-accent-muted border border-accent/20">
             <span className="w-1.5 h-1.5 rounded-full bg-accent animate-pulse" />
-            <span className="text-[11px] font-medium text-accent uppercase tracking-wider">Premium Web Agency · Bosnia</span>
+            <span className="text-[11px] font-medium text-accent uppercase tracking-wider">{t('home.hero.eyebrow')}</span>
           </div>
-
-          {/* Headline */}
           <h1 className="font-display font-bold text-[44px] md:text-[64px] leading-[1.05] tracking-tight">
-            Premium websites,<br />
-            <span className="text-accent">built to convert.</span><br />
-            Care that keeps them working.
+            {t('home.hero.h1.line1')}<br />
+            <span className="text-accent">{t('home.hero.h1.line2')}</span><br />
+            {t('home.hero.h1.line3')}
           </h1>
-
-          {/* Subhead */}
           <p className="mt-7 text-[16px] md:text-[18px] text-text-secondary leading-relaxed max-w-[640px]">
-            Cloz Digital designs, builds, and maintains modern websites for businesses
-            that take their online presence seriously. Design, hosting, SEO, and ongoing care — handled.
+            {t('home.hero.sub')}
           </p>
-
-          {/* CTAs */}
           <div className="mt-10 flex flex-col sm:flex-row gap-3">
             <Link to="/contact"
               className="inline-flex items-center justify-center gap-2 bg-accent hover:bg-accent-hover text-white px-6 py-3.5 rounded-md text-[14px] font-semibold transition-all hover:translate-y-[-1px] hover:shadow-[0_8px_24px_rgba(94,141,181,0.25)]">
-              Book a Free Consultation
+              {t('home.hero.ctaPrimary')}
               <ArrowUpRight size={15} />
             </Link>
             <a href="#packages"
               className="inline-flex items-center justify-center gap-2 bg-elevated hover:bg-raised border border-border text-text-primary px-6 py-3.5 rounded-md text-[14px] font-medium transition-colors">
-              View Packages
+              {t('home.hero.ctaSecondary')}
               <ArrowRight size={14} />
             </a>
           </div>
-
-          {/* Trust strip */}
           <div className="mt-12 flex flex-wrap items-center gap-x-8 gap-y-3 text-[12px] text-text-tertiary">
-            <span className="flex items-center gap-1.5"><Check size={12} className="text-accent" /> Custom design — never templates</span>
-            <span className="flex items-center gap-1.5"><Check size={12} className="text-accent" /> Transparent fixed pricing</span>
-            <span className="flex items-center gap-1.5"><Check size={12} className="text-accent" /> Same-day support on care plans</span>
-            <span className="flex items-center gap-1.5"><Check size={12} className="text-accent" /> You own everything</span>
+            <span className="flex items-center gap-1.5"><Check size={12} className="text-accent" /> {t('home.hero.trust1')}</span>
+            <span className="flex items-center gap-1.5"><Check size={12} className="text-accent" /> {t('home.hero.trust2')}</span>
+            <span className="flex items-center gap-1.5"><Check size={12} className="text-accent" /> {t('home.hero.trust3')}</span>
+            <span className="flex items-center gap-1.5"><Check size={12} className="text-accent" /> {t('home.hero.trust4')}</span>
           </div>
         </div>
       </div>
@@ -206,28 +79,23 @@ function Hero() {
   )
 }
 
-// ══════════════════════════════════════════════════════════════
-//  SERVICES
-// ══════════════════════════════════════════════════════════════
-
-function Services() {
+function TrustBar() {
+  const t = useT()
+  const signals = [
+    { icon: MessageCircle, label: t('home.trust.free') },
+    { icon: CheckCircle2,  label: t('home.trust.honest') },
+    { icon: Clock,         label: t('home.trust.response') },
+    { icon: Languages,     label: t('home.trust.langs') },
+    { icon: ShieldCheck,   label: t('home.trust.hostmaint') },
+  ]
   return (
-    <section id="services" className="py-20 md:py-28 px-6 border-t border-border">
-      <div className="max-w-[1200px] mx-auto">
-        <SectionHeader
-          eyebrow="What we do"
-          title="Everything your website needs, under one roof."
-          subtitle="Design, development, hosting, SEO, and ongoing care — handled by a team that owns the outcome end to end."
-        />
-
-        <div className="mt-14 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-px bg-border rounded-xl overflow-hidden border border-border">
-          {services.map((s) => (
-            <div key={s.title} className="bg-bg p-7 hover:bg-surface transition-colors group">
-              <div className="w-10 h-10 rounded-lg bg-accent-muted flex items-center justify-center mb-4 group-hover:bg-accent/20 transition-colors">
-                <s.icon size={18} className="text-accent" />
-              </div>
-              <h3 className="font-display font-semibold text-[16px] mb-2">{s.title}</h3>
-              <p className="text-[13px] text-text-secondary leading-relaxed">{s.desc}</p>
+    <section className="border-y border-border bg-surface/60">
+      <div className="max-w-[1200px] mx-auto px-6 py-6">
+        <div className="flex items-center justify-between gap-x-8 gap-y-4 flex-wrap">
+          {signals.map(s => (
+            <div key={s.label} className="flex items-center gap-2 text-[12px] text-text-secondary">
+              <s.icon size={14} className="text-accent shrink-0" />
+              <span>{s.label}</span>
             </div>
           ))}
         </div>
@@ -236,20 +104,81 @@ function Services() {
   )
 }
 
-// ══════════════════════════════════════════════════════════════
-//  PACKAGES
-// ══════════════════════════════════════════════════════════════
+function Services() {
+  const t = useT()
+  const services = [
+    { icon: Paintbrush, t: t('home.svc.design.t'),   d: t('home.svc.design.d') },
+    { icon: RefreshCw,  t: t('home.svc.redesign.t'), d: t('home.svc.redesign.d') },
+    { icon: Globe,      t: t('home.svc.hosting.t'),  d: t('home.svc.hosting.d') },
+    { icon: Shield,     t: t('home.svc.maint.t'),    d: t('home.svc.maint.d') },
+    { icon: Search,     t: t('home.svc.seo.t'),      d: t('home.svc.seo.d') },
+    { icon: Mail,       t: t('home.svc.email.t'),    d: t('home.svc.email.d') },
+    { icon: HeartPulse, t: t('home.svc.support.t'),  d: t('home.svc.support.d') },
+  ]
+  return (
+    <section id="services" className="py-20 md:py-28 px-6 border-t border-border">
+      <div className="max-w-[1200px] mx-auto">
+        <SectionHeader
+          eyebrow={t('home.services.eyebrow')}
+          title={t('home.services.title')}
+          subtitle={t('home.services.sub')}
+        />
+        <div className="mt-14 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-px bg-border rounded-xl overflow-hidden border border-border">
+          {services.map((s) => (
+            <div key={s.t} className="bg-bg p-7 hover:bg-surface transition-colors group">
+              <div className="w-10 h-10 rounded-lg bg-accent-muted flex items-center justify-center mb-4 group-hover:bg-accent/20 transition-colors">
+                <s.icon size={18} className="text-accent" />
+              </div>
+              <h3 className="font-display font-semibold text-[16px] mb-2">{s.t}</h3>
+              <p className="text-[13px] text-text-secondary leading-relaxed">{s.d}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  )
+}
 
 function Packages() {
+  const t = useT()
+  const packages = [
+    {
+      name: t('home.pkg.launch.name'), price: '800 BAM', priceUnit: t('home.pkg.oneTime'),
+      desc: t('home.pkg.launch.desc'),
+      features: [
+        t('home.pkg.launch.f1'), t('home.pkg.launch.f2'), t('home.pkg.launch.f3'),
+        t('home.pkg.launch.f4'), t('home.pkg.launch.f5'), t('home.pkg.launch.f6'),
+      ],
+      cta: t('home.pkg.launch.cta'), highlighted: false,
+    },
+    {
+      name: t('home.pkg.growth.name'), price: '1,500 BAM', priceUnit: t('home.pkg.oneTime'),
+      desc: t('home.pkg.growth.desc'),
+      features: [
+        t('home.pkg.growth.f1'), t('home.pkg.growth.f2'), t('home.pkg.growth.f3'),
+        t('home.pkg.growth.f4'), t('home.pkg.growth.f5'), t('home.pkg.growth.f6'),
+        t('home.pkg.growth.f7'),
+      ],
+      cta: t('home.pkg.growth.cta'), highlighted: true,
+    },
+    {
+      name: t('home.pkg.presence.name'), price: '200 BAM', priceUnit: t('home.pkg.perMonth'),
+      desc: t('home.pkg.presence.desc'),
+      features: [
+        t('home.pkg.presence.f1'), t('home.pkg.presence.f2'), t('home.pkg.presence.f3'),
+        t('home.pkg.presence.f4'), t('home.pkg.presence.f5'), t('home.pkg.presence.f6'),
+      ],
+      cta: t('home.pkg.presence.cta'), highlighted: false,
+    },
+  ]
   return (
     <section id="packages" className="py-20 md:py-28 px-6 border-t border-border">
       <div className="max-w-[1200px] mx-auto">
         <SectionHeader
-          eyebrow="Packages"
-          title="Clear pricing. No hidden costs."
-          subtitle="Choose a package that fits where your business is today. Every plan includes design, build, deployment, and a real human you can talk to."
+          eyebrow={t('home.pkg.eyebrow')}
+          title={t('home.pkg.title')}
+          subtitle={t('home.pkg.sub')}
         />
-
         <div className="mt-14 grid grid-cols-1 md:grid-cols-3 gap-5">
           {packages.map((p) => (
             <div key={p.name}
@@ -260,18 +189,15 @@ function Packages() {
               }`}>
               {p.highlighted && (
                 <span className="absolute -top-3 left-1/2 -translate-x-1/2 bg-accent text-white text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-wider">
-                  Most Popular
+                  {t('home.pkg.mostPopular')}
                 </span>
               )}
-
               <h3 className="font-display font-bold text-[20px] mb-1">{p.name}</h3>
               <p className="text-[12px] text-text-tertiary mb-5">{p.desc}</p>
-
               <div className="mb-6">
                 <span className="font-display font-bold text-[36px] tracking-tight">{p.price}</span>
                 <span className="text-[12px] text-text-tertiary ml-2">{p.priceUnit}</span>
               </div>
-
               <ul className="space-y-2.5 mb-7">
                 {p.features.map(f => (
                   <li key={f} className="flex items-start gap-2 text-[13px] text-text-secondary leading-relaxed">
@@ -280,7 +206,6 @@ function Packages() {
                   </li>
                 ))}
               </ul>
-
               <Link to="/contact"
                 className={`block text-center py-3 rounded-md text-[13px] font-semibold transition-all ${
                   p.highlighted
@@ -292,36 +217,39 @@ function Packages() {
             </div>
           ))}
         </div>
-
         <p className="mt-10 text-center text-[12px] text-text-tertiary">
-          Need something different?{' '}
-          <Link to="/contact" className="text-accent hover:text-accent-hover">Get a custom quote →</Link>
+          {t('home.pkg.needDifferent')}{' '}
+          <Link to="/contact" className="text-accent hover:text-accent-hover">{t('home.pkg.customQuote')}</Link>
         </p>
       </div>
     </section>
   )
 }
 
-// ══════════════════════════════════════════════════════════════
-//  WHY CHOOSE
-// ══════════════════════════════════════════════════════════════
-
 function WhyChoose() {
+  const t = useT()
+  const differentiators = [
+    { icon: Sparkles,   t: t('home.why.premium.t'),   d: t('home.why.premium.d') },
+    { icon: Gauge,      t: t('home.why.fast.t'),      d: t('home.why.fast.d') },
+    { icon: Smartphone, t: t('home.why.mobile.t'),    d: t('home.why.mobile.d') },
+    { icon: Search,     t: t('home.why.seo.t'),       d: t('home.why.seo.d') },
+    { icon: HeartPulse, t: t('home.why.support.t'),   d: t('home.why.support.d') },
+    { icon: Languages,  t: t('home.why.bilingual.t'), d: t('home.why.bilingual.d') },
+  ]
   return (
     <section className="py-20 md:py-28 px-6 border-t border-border">
       <div className="max-w-[1200px] mx-auto">
         <SectionHeader
-          eyebrow="Why Cloz Digital"
-          title="A premium agency without the bloated overhead."
-          subtitle="We focus on the work that matters: design that reflects your business, code that performs, and ongoing care that keeps everything healthy."
+          eyebrow={t('home.why.eyebrow')}
+          title={t('home.why.title')}
+          subtitle={t('home.why.sub')}
         />
-
         <div className="mt-14 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {differentiators.map(d => (
-            <div key={d.title} className="p-6 bg-surface border border-border rounded-xl hover:border-text-tertiary transition-colors">
+            <div key={d.t} className="p-6 bg-surface border border-border rounded-xl hover:border-text-tertiary transition-colors">
               <d.icon size={18} className="text-accent mb-3" strokeWidth={1.8} />
-              <h3 className="font-display font-semibold text-[15px] mb-1.5">{d.title}</h3>
-              <p className="text-[13px] text-text-secondary leading-relaxed">{d.desc}</p>
+              <h3 className="font-display font-semibold text-[15px] mb-1.5">{d.t}</h3>
+              <p className="text-[13px] text-text-secondary leading-relaxed">{d.d}</p>
             </div>
           ))}
         </div>
@@ -330,27 +258,30 @@ function WhyChoose() {
   )
 }
 
-// ══════════════════════════════════════════════════════════════
-//  PROCESS
-// ══════════════════════════════════════════════════════════════
-
 function Process() {
+  const t = useT()
+  const process = [
+    { num: '01', icon: Compass,    t: t('home.proc.discovery.t'), d: t('home.proc.discovery.d') },
+    { num: '02', icon: PenTool,    t: t('home.proc.design.t'),    d: t('home.proc.design.d') },
+    { num: '03', icon: Code2,      t: t('home.proc.dev.t'),       d: t('home.proc.dev.d') },
+    { num: '04', icon: Rocket,     t: t('home.proc.launch.t'),    d: t('home.proc.launch.d') },
+    { num: '05', icon: HeartPulse, t: t('home.proc.care.t'),      d: t('home.proc.care.d') },
+  ]
   return (
     <section className="py-20 md:py-28 px-6 border-t border-border">
       <div className="max-w-[1200px] mx-auto">
         <SectionHeader
-          eyebrow="How we work"
-          title="A clear process from first call to ongoing care."
-          subtitle="Five focused stages. Defined deliverables. Honest communication every step."
+          eyebrow={t('home.proc.eyebrow')}
+          title={t('home.proc.title')}
+          subtitle={t('home.proc.sub')}
         />
-
         <div className="mt-14 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
           {process.map((p) => (
             <div key={p.num} className="relative p-6 bg-surface border border-border rounded-xl">
               <span className="font-display font-bold text-[11px] text-accent tracking-wider">{p.num}</span>
               <p.icon size={18} className="text-text-secondary mt-3 mb-3" strokeWidth={1.8} />
-              <h3 className="font-display font-semibold text-[14px] mb-1.5">{p.title}</h3>
-              <p className="text-[12px] text-text-tertiary leading-relaxed">{p.desc}</p>
+              <h3 className="font-display font-semibold text-[14px] mb-1.5">{p.t}</h3>
+              <p className="text-[12px] text-text-tertiary leading-relaxed">{p.d}</p>
             </div>
           ))}
         </div>
@@ -359,22 +290,27 @@ function Process() {
   )
 }
 
-// ══════════════════════════════════════════════════════════════
-//  FAQ
-// ══════════════════════════════════════════════════════════════
-
 function FAQ() {
+  const t = useT()
   const [open, setOpen] = useState(0)
+  const faqs = [
+    { q: t('home.faq.q1'), a: t('home.faq.a1') },
+    { q: t('home.faq.q2'), a: t('home.faq.a2') },
+    { q: t('home.faq.q3'), a: t('home.faq.a3') },
+    { q: t('home.faq.q4'), a: t('home.faq.a4') },
+    { q: t('home.faq.q5'), a: t('home.faq.a5') },
+    { q: t('home.faq.q6'), a: t('home.faq.a6') },
+    { q: t('home.faq.q7'), a: t('home.faq.a7') },
+  ]
   return (
     <section className="py-20 md:py-28 px-6 border-t border-border">
       <div className="max-w-[820px] mx-auto">
         <SectionHeader
-          eyebrow="Common questions"
-          title="Frequently asked questions."
-          subtitle="Straight answers. If you don't see your question, just send us a note."
+          eyebrow={t('home.faq.eyebrow')}
+          title={t('home.faq.title')}
+          subtitle={t('home.faq.sub')}
           centered
         />
-
         <div className="mt-12 space-y-2">
           {faqs.map((f, i) => (
             <div key={i} className="bg-surface border border-border rounded-lg overflow-hidden">
@@ -396,142 +332,46 @@ function FAQ() {
   )
 }
 
-// ══════════════════════════════════════════════════════════════
-//  FINAL CTA
-// ══════════════════════════════════════════════════════════════
-
-function FinalCTA() {
-  return (
-    <section className="py-24 md:py-32 px-6 border-t border-border">
-      <div className="max-w-[1200px] mx-auto">
-        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-accent-muted via-surface to-surface border border-accent/20 p-10 md:p-16 text-center">
-          <div className="absolute inset-0 pointer-events-none opacity-30" aria-hidden="true">
-            <div className="absolute -top-32 -right-32 w-[400px] h-[400px] rounded-full"
-              style={{ background: 'radial-gradient(circle, var(--color-accent) 0%, transparent 60%)' }} />
-          </div>
-
-          <div className="relative">
-            <h2 className="font-display font-bold text-[32px] md:text-[44px] leading-tight tracking-tight max-w-[680px] mx-auto">
-              Let's build something your customers actually use.
-            </h2>
-            <p className="mt-5 text-[15px] text-text-secondary max-w-[560px] mx-auto leading-relaxed">
-              Book a free 30-minute consultation. We will review your business, your current site, and propose the right path forward — no obligation.
-            </p>
-
-            <div className="mt-9 flex flex-col sm:flex-row items-center justify-center gap-3">
-              <Link to="/contact"
-                className="inline-flex items-center justify-center gap-2 bg-accent hover:bg-accent-hover text-white px-7 py-3.5 rounded-md text-[14px] font-semibold transition-all hover:translate-y-[-1px]">
-                Book a Free Consultation
-                <ArrowUpRight size={15} />
-              </Link>
-              <a href="mailto:general@cloz.digital"
-                className="inline-flex items-center justify-center gap-2 text-text-secondary hover:text-text-primary px-5 py-3.5 text-[13px] font-medium transition-colors">
-                <Mail size={13} />
-                general@cloz.digital
-              </a>
-            </div>
-
-            <div className="mt-8 flex items-center justify-center gap-x-6 gap-y-2 text-[11px] text-text-tertiary flex-wrap">
-              <span className="flex items-center gap-1.5"><MapPin size={11} />Sarajevo, Bosnia and Herzegovina</span>
-              <span className="flex items-center gap-1.5"><Languages size={11} />Bosnian · English</span>
-            </div>
-          </div>
-        </div>
-      </div>
-    </section>
-  )
-}
-
-// ══════════════════════════════════════════════════════════════
-//  TRUST BAR — High-visibility band right below the hero
-// ══════════════════════════════════════════════════════════════
-
-function TrustBar() {
-  const signals = [
-    { icon: MessageCircle, label: 'Free consultation' },
-    { icon: CheckCircle2,  label: 'Honest project assessment' },
-    { icon: Clock,         label: 'Response within 24h' },
-    { icon: Languages,     label: 'Bosnian & English' },
-    { icon: ShieldCheck,   label: 'Hosting & maintenance' },
-  ]
-  return (
-    <section className="border-y border-border bg-surface/60">
-      <div className="max-w-[1200px] mx-auto px-6 py-6">
-        <div className="flex items-center justify-between gap-x-8 gap-y-4 flex-wrap">
-          {signals.map(s => (
-            <div key={s.label} className="flex items-center gap-2 text-[12px] text-text-secondary">
-              <s.icon size={14} className="text-accent shrink-0" />
-              <span>{s.label}</span>
-            </div>
-          ))}
-        </div>
-      </div>
-    </section>
-  )
-}
-
-// ══════════════════════════════════════════════════════════════
-//  RISK REVERSAL — Remove objections
-// ══════════════════════════════════════════════════════════════
-
-const riskReversals = [
-  {
-    icon: MessageCircle,
-    title: 'No pressure consultations',
-    desc: 'Book a free 30-minute call. We give you an honest assessment of what your business actually needs. If we are not the right fit, we will tell you.',
-  },
-  {
-    icon: FileText,
-    title: 'Transparent pricing',
-    desc: 'Fixed, written quotes. No hidden fees, no inflated estimates, no surprise invoices. The price you agree to is the price you pay.',
-  },
-  {
-    icon: Lock,
-    title: 'You own everything',
-    desc: 'Code, content, domain, hosting credentials — all yours. We do not lock you in. You can take your site to another provider any time.',
-  },
-  {
-    icon: HeartPulse,
-    title: 'Ongoing support — only if you want it',
-    desc: 'Care plans are optional. Skip them, choose them, cancel them. We earn the relationship every month.',
-  },
-]
-
 function RiskReversal() {
+  const t = useT()
+  const riskReversals = [
+    { icon: MessageCircle, t: t('home.risk.r1.t'), d: t('home.risk.r1.d') },
+    { icon: FileText,      t: t('home.risk.r2.t'), d: t('home.risk.r2.d') },
+    { icon: Lock,          t: t('home.risk.r3.t'), d: t('home.risk.r3.d') },
+    { icon: HeartPulse,    t: t('home.risk.r4.t'), d: t('home.risk.r4.d') },
+  ]
   return (
     <section className="py-20 md:py-28 px-6 border-t border-border">
       <div className="max-w-[1200px] mx-auto">
         <SectionHeader
-          eyebrow="Zero-risk start"
-          title="Why working with us is a safe bet."
-          subtitle="We've removed every reason to hesitate. There's no risk in starting a conversation with Cloz Digital."
+          eyebrow={t('home.risk.eyebrow')}
+          title={t('home.risk.title')}
+          subtitle={t('home.risk.sub')}
         />
-
         <div className="mt-14 grid grid-cols-1 md:grid-cols-2 gap-4">
           {riskReversals.map(r => (
-            <div key={r.title} className="bg-surface border border-border rounded-xl p-6 hover:border-accent/30 transition-colors">
+            <div key={r.t} className="bg-surface border border-border rounded-xl p-6 hover:border-accent/30 transition-colors">
               <div className="w-10 h-10 rounded-lg bg-accent-muted flex items-center justify-center mb-4">
                 <r.icon size={18} className="text-accent" />
               </div>
-              <h3 className="font-display font-semibold text-[16px] mb-2">{r.title}</h3>
-              <p className="text-[13px] text-text-secondary leading-relaxed">{r.desc}</p>
+              <h3 className="font-display font-semibold text-[16px] mb-2">{r.t}</h3>
+              <p className="text-[13px] text-text-secondary leading-relaxed">{r.d}</p>
             </div>
           ))}
         </div>
-
         <div className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-3">
           <Link to="/contact"
             className="inline-flex items-center gap-2 bg-accent hover:bg-accent-hover text-white px-6 py-3 rounded-md text-[13px] font-semibold transition-all hover:translate-y-[-1px]">
-            Book a Free Consultation
+            {t('home.risk.ctaBook')}
             <ArrowUpRight size={13} />
           </Link>
           <Link to="/contact"
             className="inline-flex items-center gap-2 bg-elevated hover:bg-raised border border-border text-text-primary px-6 py-3 rounded-md text-[13px] font-medium transition-colors">
-            Request a Website Review
+            {t('home.risk.ctaReview')}
           </Link>
           <Link to="/contact"
             className="inline-flex items-center gap-2 text-text-secondary hover:text-text-primary px-3 py-3 text-[13px] font-medium transition-colors">
-            Get a Custom Proposal →
+            {t('home.risk.ctaProposal')}
           </Link>
         </div>
       </div>
@@ -539,29 +379,26 @@ function RiskReversal() {
   )
 }
 
-// ══════════════════════════════════════════════════════════════
-//  BOOKING PLACEHOLDER — Reserved for future calendar integration
-// ══════════════════════════════════════════════════════════════
-
 function BookingPlaceholder() {
+  const t = useT()
   return (
     <section className="py-16 px-6 border-t border-border bg-surface/40">
       <div className="max-w-[820px] mx-auto text-center">
         <div className="inline-flex items-center gap-2 px-3 py-1 mb-4 rounded-full bg-accent-muted border border-accent/20">
           <Calendar size={11} className="text-accent" />
-          <span className="text-[11px] font-medium text-accent uppercase tracking-wider">Direct Booking</span>
+          <span className="text-[11px] font-medium text-accent uppercase tracking-wider">{t('home.book.badge')}</span>
         </div>
         <h2 className="font-display font-bold text-[26px] md:text-[32px] tracking-tight">
-          Prefer to book directly?
+          {t('home.book.title')}
         </h2>
         <p className="mt-4 text-[14px] text-text-secondary leading-relaxed max-w-[560px] mx-auto">
-          Scheduled consultations are coming soon. For now, send us a quick note and we'll reply with a few times that work for both sides.
+          {t('home.book.sub')}
         </p>
         <div className="mt-7 flex items-center justify-center gap-3 flex-wrap">
           <Link to="/contact"
             className="inline-flex items-center gap-2 bg-accent hover:bg-accent-hover text-white px-5 py-3 rounded-md text-[13px] font-semibold transition-colors">
             <MessageCircle size={13} />
-            Send a Message
+            {t('home.book.send')}
           </Link>
           <a href="mailto:general@cloz.digital?subject=Consultation%20Request"
             className="inline-flex items-center gap-2 bg-elevated hover:bg-raised border border-border text-text-primary px-5 py-3 rounded-md text-[13px] font-medium transition-colors">
@@ -574,9 +411,45 @@ function BookingPlaceholder() {
   )
 }
 
-// ══════════════════════════════════════════════════════════════
-//  SHARED
-// ══════════════════════════════════════════════════════════════
+function FinalCTA() {
+  const t = useT()
+  return (
+    <section className="py-24 md:py-32 px-6 border-t border-border">
+      <div className="max-w-[1200px] mx-auto">
+        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-accent-muted via-surface to-surface border border-accent/20 p-10 md:p-16 text-center">
+          <div className="absolute inset-0 pointer-events-none opacity-30" aria-hidden="true">
+            <div className="absolute -top-32 -right-32 w-[400px] h-[400px] rounded-full"
+              style={{ background: 'radial-gradient(circle, var(--color-accent) 0%, transparent 60%)' }} />
+          </div>
+          <div className="relative">
+            <h2 className="font-display font-bold text-[32px] md:text-[44px] leading-tight tracking-tight max-w-[680px] mx-auto">
+              {t('home.cta.title')}
+            </h2>
+            <p className="mt-5 text-[15px] text-text-secondary max-w-[560px] mx-auto leading-relaxed">
+              {t('home.cta.sub')}
+            </p>
+            <div className="mt-9 flex flex-col sm:flex-row items-center justify-center gap-3">
+              <Link to="/contact"
+                className="inline-flex items-center justify-center gap-2 bg-accent hover:bg-accent-hover text-white px-7 py-3.5 rounded-md text-[14px] font-semibold transition-all hover:translate-y-[-1px]">
+                {t('home.cta.book')}
+                <ArrowUpRight size={15} />
+              </Link>
+              <a href="mailto:general@cloz.digital"
+                className="inline-flex items-center justify-center gap-2 text-text-secondary hover:text-text-primary px-5 py-3.5 text-[13px] font-medium transition-colors">
+                <Mail size={13} />
+                general@cloz.digital
+              </a>
+            </div>
+            <div className="mt-8 flex items-center justify-center gap-x-6 gap-y-2 text-[11px] text-text-tertiary flex-wrap">
+              <span className="flex items-center gap-1.5"><MapPin size={11} />{t('footer.location')}</span>
+              <span className="flex items-center gap-1.5"><Languages size={11} />{t('home.cta.bilingual')}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  )
+}
 
 function SectionHeader({ eyebrow, title, subtitle, centered }) {
   return (

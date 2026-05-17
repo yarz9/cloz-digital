@@ -610,6 +610,22 @@ export async function initDatabase() {
     try { rawDb.run(`ALTER TABLE portal_messages ADD COLUMN ${col} ${typedef}`); } catch {}
   }
 
+  // ── Localization overrides (admin edits to bundled dictionary) ──
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS i18n_overrides (
+      id TEXT PRIMARY KEY,
+      key TEXT NOT NULL,
+      lang TEXT NOT NULL,
+      value TEXT NOT NULL,
+      updated_by TEXT DEFAULT '',
+      updated_at TEXT DEFAULT (datetime('now'))
+    );
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_i18n_overrides_key_lang ON i18n_overrides(key, lang);
+  `);
+
+  // Migrate inquiries: add lang column
+  try { rawDb.run(`ALTER TABLE inquiries ADD COLUMN lang TEXT DEFAULT 'en'`); } catch {}
+
   // ── Public Inquiries (homepage contact form) ──
   db.exec(`
     CREATE TABLE IF NOT EXISTS inquiries (

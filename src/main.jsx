@@ -4,13 +4,16 @@ import { BrowserRouter } from 'react-router-dom'
 import './index.css'
 import App from './App.jsx'
 import { UserProvider } from './contexts/UserContext'
+import { I18nProvider } from './i18n/I18nProvider'
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>
     <BrowserRouter>
-      <UserProvider>
-        <App />
-      </UserProvider>
+      <I18nProvider>
+        <UserProvider>
+          <App />
+        </UserProvider>
+      </I18nProvider>
     </BrowserRouter>
   </StrictMode>,
 )

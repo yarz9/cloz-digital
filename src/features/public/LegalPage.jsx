@@ -1,11 +1,13 @@
 import { useEffect, useState } from 'react'
 import { Loader2, AlertCircle } from 'lucide-react'
+import { useT } from '@/i18n/I18nProvider'
 
 // ══════════════════════════════════════════════════════════════
 //  Public legal page — fetches the live template from /api/legal/public/:slug
 // ══════════════════════════════════════════════════════════════
 
 export default function LegalPage({ slug, fallbackTitle }) {
+  const t = useT()
   const [doc, setDoc] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -30,14 +32,14 @@ export default function LegalPage({ slug, fallbackTitle }) {
         ) : error ? (
           <div className="bg-error/5 border border-error/20 rounded-md p-4 text-[13px] text-error flex items-start gap-2">
             <AlertCircle size={14} className="shrink-0 mt-0.5" />
-            <span>{error} — please email general@cloz.digital and we'll send the document directly.</span>
+            <span>{error} — {t('legal.error')}</span>
           </div>
         ) : doc ? (
           <>
             <div className="mb-8 pb-6 border-b border-border">
               <h1 className="font-display font-bold text-[36px] md:text-[44px] leading-tight tracking-tight">{doc.title}</h1>
               <p className="text-[12px] text-text-tertiary mt-3">
-                Version {doc.version}{doc.effective_date ? ` · Effective ${doc.effective_date}` : ''}
+                {t('legal.version')} {doc.version}{doc.effective_date ? ` · ${t('legal.effective')} ${doc.effective_date}` : ''}
               </p>
             </div>
 

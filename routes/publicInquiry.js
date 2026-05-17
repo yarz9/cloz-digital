@@ -205,50 +205,77 @@ function renderInternalNotification(inquiry, analysis) {
   return { subject, html, text };
 }
 
+// Bilingual templates — picks copy based on inquiry.lang.
+const AUTO_REPLY_COPY = {
+  en: {
+    subject:  "We've Received Your Inquiry — Cloz Digital",
+    thanks:   (firstName) => `Thank you, ${firstName}.`,
+    received: "We've received your inquiry.",
+    body1Html:`A real person from Cloz Digital will review your message and respond <strong style="color:#5E8DB5;">within 24 hours</strong> &mdash; usually the same day.`,
+    body1Txt: `A real person from Cloz Digital will review your message and respond within 24 hours — usually the same day.`,
+    body2:    `We'll come back with an honest assessment of how we can help and a clear next step. No sales pressure.`,
+    reach:    "Need to reach us in the meantime?",
+    emailL:   "Email", webL: "Web",
+    foot:     "Cloz Digital · Premium web design, hosting, and ongoing care",
+    location: "Sarajevo, Bosnia and Herzegovina",
+  },
+  bcs: {
+    subject:  "Vaš upit je primljen — Cloz Digital",
+    thanks:   (firstName) => `Hvala, ${firstName}.`,
+    received: "Primili smo vaš upit.",
+    body1Html:`Prava osoba iz Cloz Digitala će pregledati vašu poruku i odgovoriti <strong style="color:#5E8DB5;">u roku od 24 sata</strong> &mdash; obično istog dana.`,
+    body1Txt: `Prava osoba iz Cloz Digitala će pregledati vašu poruku i odgovoriti u roku od 24 sata — obično istog dana.`,
+    body2:    `Vratit ćemo se s iskrenom procjenom kako vam možemo pomoći i jasnim sljedećim korakom. Bez prodajnog pritiska.`,
+    reach:    "Trebate nas kontaktirati u međuvremenu?",
+    emailL:   "Email", webL: "Web",
+    foot:     "Cloz Digital · Premium web dizajn, hosting i kontinuirano održavanje",
+    location: "Sarajevo, Bosna i Hercegovina",
+  },
+};
+
 function renderAutoReply(inquiry) {
-  const subject = `We've Received Your Inquiry — Cloz Digital`;
+  const lang = (inquiry.lang === 'bcs') ? 'bcs' : 'en';
+  const c = AUTO_REPLY_COPY[lang];
+  const subject = c.subject;
+  const firstName = (inquiry.name || '').split(' ')[0];
 
   const html = `
 <!DOCTYPE html>
 <html><body style="margin:0;padding:0;background:#0B0B0D;color:#F5F5F7;font-family:'Inter',system-ui,sans-serif;">
   <div style="max-width:560px;margin:0 auto;padding:40px 24px;">
-    <h1 style="margin:0 0 4px;font-family:'Plus Jakarta Sans',system-ui,sans-serif;font-size:24px;font-weight:700;color:#F5F5F7;">Thank you, ${escapeHtml(inquiry.name.split(' ')[0])}.</h1>
-    <p style="margin:0;font-size:14px;color:#A1A1AA;">We've received your inquiry.</p>
+    <h1 style="margin:0 0 4px;font-family:'Plus Jakarta Sans',system-ui,sans-serif;font-size:24px;font-weight:700;color:#F5F5F7;">${escapeHtml(c.thanks(firstName))}</h1>
+    <p style="margin:0;font-size:14px;color:#A1A1AA;">${escapeHtml(c.received)}</p>
 
     <div style="margin:28px 0;padding:20px;background:#18181C;border-radius:10px;border:1px solid rgba(255,255,255,0.06);">
-      <p style="margin:0 0 12px;font-size:14px;line-height:1.7;color:#F5F5F7;">
-        A real person from Cloz Digital will review your message and respond <strong style="color:#5E8DB5;">within 24 hours</strong> &mdash; usually the same day.
-      </p>
-      <p style="margin:0;font-size:14px;line-height:1.7;color:#F5F5F7;">
-        We'll come back with an honest assessment of how we can help and a clear next step. No sales pressure.
-      </p>
+      <p style="margin:0 0 12px;font-size:14px;line-height:1.7;color:#F5F5F7;">${c.body1Html}</p>
+      <p style="margin:0;font-size:14px;line-height:1.7;color:#F5F5F7;">${escapeHtml(c.body2)}</p>
     </div>
 
     <div style="font-size:12px;color:#A1A1AA;margin-top:24px;">
-      <strong style="color:#F5F5F7;font-size:13px;display:block;margin-bottom:8px;">Need to reach us in the meantime?</strong>
-      Email <a href="mailto:general@cloz.digital" style="color:#5E8DB5;text-decoration:none;">general@cloz.digital</a><br/>
-      Web <a href="https://cloz.digital" style="color:#5E8DB5;text-decoration:none;">cloz.digital</a>
+      <strong style="color:#F5F5F7;font-size:13px;display:block;margin-bottom:8px;">${escapeHtml(c.reach)}</strong>
+      ${escapeHtml(c.emailL)} <a href="mailto:general@cloz.digital" style="color:#5E8DB5;text-decoration:none;">general@cloz.digital</a><br/>
+      ${escapeHtml(c.webL)} <a href="https://cloz.digital" style="color:#5E8DB5;text-decoration:none;">cloz.digital</a>
     </div>
 
     <div style="margin-top:32px;padding-top:20px;border-top:1px solid rgba(255,255,255,0.08);font-size:11px;color:#52525B;line-height:1.5;">
-      Cloz Digital &middot; Premium web design, hosting, and ongoing care<br/>
-      Sarajevo, Bosnia and Herzegovina
+      ${escapeHtml(c.foot)}<br/>
+      ${escapeHtml(c.location)}
     </div>
   </div>
 </body></html>`.trim();
 
-  const text = `Thank you, ${inquiry.name.split(' ')[0]}.
+  const text = `${c.thanks(firstName)}
 
-We've received your inquiry. A real person from Cloz Digital will review your message and respond within 24 hours — usually the same day.
+${c.received} ${c.body1Txt}
 
-We'll come back with an honest assessment of how we can help and a clear next step. No sales pressure.
+${c.body2}
 
-Need to reach us in the meantime?
+${c.reach}
 general@cloz.digital
 cloz.digital
 
-Cloz Digital — Premium web design, hosting, and ongoing care
-Sarajevo, Bosnia and Herzegovina`;
+${c.foot}
+${c.location}`;
 
   return { subject, html, text };
 }
@@ -292,6 +319,7 @@ router.post('/', async (req, res) => {
       current_website: sanitize(req.body.currentWebsite, 500),
       service_needed: sanitize(req.body.serviceNeeded, 200),
       message: sanitize(req.body.message, 4000),
+      lang: (req.body.lang === 'bcs' ? 'bcs' : 'en'),
       source: 'website_contact_form',
       status: 'new',
       ip_address: ip.slice(0, 100),
@@ -312,11 +340,11 @@ router.post('/', async (req, res) => {
     // ── 4. Persist (do this BEFORE AI/email so we never lose the lead) ──
     db.prepare(`INSERT INTO inquiries (
       id, name, email, business_name, current_website, service_needed, message,
-      source, status, priority, ip_address, user_agent, created_at, updated_at
-    ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)`).run(
+      source, status, priority, ip_address, user_agent, lang, created_at, updated_at
+    ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`).run(
       inquiry.id, inquiry.name, inquiry.email, inquiry.business_name, inquiry.current_website,
       inquiry.service_needed, inquiry.message, inquiry.source, 'new', 'medium',
-      inquiry.ip_address, inquiry.user_agent, inquiry.created_at, inquiry.created_at,
+      inquiry.ip_address, inquiry.user_agent, inquiry.lang, inquiry.created_at, inquiry.created_at,
     );
 
     logInfo(`Inquiry received from ${inquiry.email}`, {
