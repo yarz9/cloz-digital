@@ -40,6 +40,9 @@ router.post('/clients', async (req, res) => {
     business_name, contact_name, email, phone, industry, website,
     logo_url, brand_colors, brand_fonts, voice_guidelines, package: pkg,
     hosting_provider, domain_registrar, domain_expiry, ssl_expiry, mrr,
+    // Expanded discovery profile
+    niche, goals, requested_services, business_challenges, discovery_notes,
+    communication_preferences, account_manager, priority_level, monthly_retainer,
     send_welcome = true,
   } = req.body;
 
@@ -56,8 +59,10 @@ router.post('/clients', async (req, res) => {
     id, business_name, contact_name, email, phone, industry, website,
     logo_url, brand_colors, brand_fonts, voice_guidelines, package,
     hosting_provider, domain_registrar, domain_expiry, ssl_expiry, mrr,
-    status, access_token
-  ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`).run(
+    status, access_token,
+    niche, goals, requested_services, business_challenges, discovery_notes,
+    communication_preferences, account_manager, priority_level, monthly_retainer
+  ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`).run(
     id, business_name.trim(), (contact_name || '').trim(), email.toLowerCase().trim(),
     (phone || '').trim(), (industry || '').trim(), (website || '').trim(),
     (logo_url || '').trim(),
@@ -71,6 +76,15 @@ router.post('/clients', async (req, res) => {
     (ssl_expiry || '').trim(),
     parseFloat(mrr) || 0,
     'active', accessToken,
+    (niche || '').trim(),
+    (goals || '').trim(),
+    JSON.stringify(Array.isArray(requested_services) ? requested_services : []),
+    (business_challenges || '').trim(),
+    (discovery_notes || '').trim(),
+    (communication_preferences || '').trim(),
+    (account_manager || '').trim(),
+    (priority_level || 'standard'),
+    parseFloat(monthly_retainer) || 0,
   );
 
   logInfo(`Portal client onboarded: ${business_name} <${email}>`, {
@@ -137,7 +151,9 @@ router.patch('/clients/:id', (req, res) => {
 
   const allowed = ['business_name', 'contact_name', 'phone', 'industry', 'website',
     'logo_url', 'voice_guidelines', 'package', 'hosting_provider', 'domain_registrar',
-    'domain_expiry', 'ssl_expiry', 'mrr', 'status'];
+    'domain_expiry', 'ssl_expiry', 'mrr', 'status',
+    'niche', 'goals', 'business_challenges', 'discovery_notes',
+    'communication_preferences', 'account_manager', 'priority_level', 'monthly_retainer'];
   const updates = [];
   const params = [];
   for (const k of allowed) {
@@ -148,6 +164,10 @@ router.patch('/clients/:id', (req, res) => {
   }
   if (req.body.brand_colors) { updates.push('brand_colors = ?'); params.push(JSON.stringify(req.body.brand_colors)); }
   if (req.body.brand_fonts)  { updates.push('brand_fonts = ?');  params.push(JSON.stringify(req.body.brand_fonts)); }
+  if (req.body.requested_services !== undefined) {
+    updates.push('requested_services = ?');
+    params.push(JSON.stringify(Array.isArray(req.body.requested_services) ? req.body.requested_services : []));
+  }
 
   if (updates.length === 0) return res.status(400).json({ error: 'Nothing to update' });
   updates.push(`updated_at = datetime('now')`);

@@ -8,7 +8,8 @@ import {
   Settings, Zap, Target, UserPlus, HeartPulse, MessageSquare, DollarSign,
   CreditCard, PieChart, Shield, Share2, Compass, Brain, Activity,
   Database, ToggleLeft, TestTube, ScrollText, ChevronDown, ChevronRight,
-  Sparkles, Building2, Calendar, TrendingUp, Eye, Scan, Mail, Radio
+  Sparkles, Building2, Calendar, TrendingUp, Eye, Scan, Mail, Radio,
+  Inbox,
 } from 'lucide-react'
 
 const sections = [
@@ -35,6 +36,7 @@ const sections = [
   {
     title: 'Communication',
     items: [
+      { to: '/management/service-desk', icon: Inbox, label: 'Service Desk' },
       { to: '/management/mail', icon: Mail, label: 'Mail' },
     ]
   },

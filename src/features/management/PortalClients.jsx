@@ -128,6 +128,16 @@ function OnboardForm({ onCancel, onSuccess }) {
     package: 'Presence Care',
     hosting_provider: '', domain_registrar: '',
     domain_expiry: '', ssl_expiry: '', mrr: 0,
+    // Expanded discovery profile
+    niche: '',
+    goals: '',
+    requested_services: [],
+    business_challenges: '',
+    discovery_notes: '',
+    communication_preferences: '',
+    account_manager: '',
+    priority_level: 'standard',
+    monthly_retainer: 0,
     send_welcome: true,
   })
   const [submitting, setSubmitting] = useState(false)
@@ -254,6 +264,66 @@ function OnboardForm({ onCancel, onSuccess }) {
           <FormField label="SSL Expiry">
             <input type="date" value={form.ssl_expiry} onChange={e => update('ssl_expiry', e.target.value)}
               className="w-full bg-elevated border border-border rounded-md px-3 py-2 text-[13px] focus:border-accent focus:outline-none" />
+          </FormField>
+        </div>
+      </div>
+
+      <div className="pt-3 border-t border-border">
+        <h4 className="text-[11px] text-text-tertiary uppercase tracking-wider font-semibold mb-3">Discovery Profile</h4>
+        <div className="grid md:grid-cols-2 gap-3">
+          <FormField label="Niche / Sub-segment">
+            <input value={form.niche} onChange={e => update('niche', e.target.value)}
+              placeholder="e.g. Boutique skincare clinics"
+              className="w-full bg-elevated border border-border rounded-md px-3 py-2 text-[13px] focus:border-accent focus:outline-none" />
+          </FormField>
+          <FormField label="Account Manager">
+            <select value={form.account_manager} onChange={e => update('account_manager', e.target.value)}
+              className="w-full bg-elevated border border-border rounded-md px-3 py-2 text-[13px] focus:border-accent focus:outline-none">
+              <option value="">Unassigned</option>
+              <option value="Anes">Anes</option>
+              <option value="Denis">Denis</option>
+            </select>
+          </FormField>
+          <FormField label="Priority Level">
+            <select value={form.priority_level} onChange={e => update('priority_level', e.target.value)}
+              className="w-full bg-elevated border border-border rounded-md px-3 py-2 text-[13px] focus:border-accent focus:outline-none">
+              <option value="vip">VIP</option>
+              <option value="standard">Standard</option>
+              <option value="low">Low</option>
+            </select>
+          </FormField>
+          <FormField label="Monthly Retainer (BAM)">
+            <input type="number" value={form.monthly_retainer} onChange={e => update('monthly_retainer', e.target.value)}
+              className="w-full bg-elevated border border-border rounded-md px-3 py-2 text-[13px] focus:border-accent focus:outline-none" />
+          </FormField>
+          <FormField label="Communication Preferences">
+            <input value={form.communication_preferences} onChange={e => update('communication_preferences', e.target.value)}
+              placeholder="e.g. Email only, weekly Friday call, Viber for urgent"
+              className="w-full bg-elevated border border-border rounded-md px-3 py-2 text-[13px] focus:border-accent focus:outline-none" />
+          </FormField>
+          <FormField label="Requested Services (comma-separated)">
+            <input
+              value={Array.isArray(form.requested_services) ? form.requested_services.join(', ') : form.requested_services}
+              onChange={e => update('requested_services', e.target.value.split(',').map(s => s.trim()).filter(Boolean))}
+              placeholder="e.g. Web design, SEO, Maintenance, Content"
+              className="w-full bg-elevated border border-border rounded-md px-3 py-2 text-[13px] focus:border-accent focus:outline-none" />
+          </FormField>
+        </div>
+        <div className="grid md:grid-cols-1 gap-3 mt-3">
+          <FormField label="Goals">
+            <textarea value={form.goals} onChange={e => update('goals', e.target.value)} rows={2}
+              placeholder="What does this client want to achieve in the next 6-12 months?"
+              className="w-full bg-elevated border border-border rounded-md px-3 py-2 text-[13px] focus:border-accent focus:outline-none resize-none" />
+          </FormField>
+          <FormField label="Business Challenges">
+            <textarea value={form.business_challenges} onChange={e => update('business_challenges', e.target.value)} rows={2}
+              placeholder="Pain points, blockers, things that aren't working today."
+              className="w-full bg-elevated border border-border rounded-md px-3 py-2 text-[13px] focus:border-accent focus:outline-none resize-none" />
+          </FormField>
+          <FormField label="Discovery Notes">
+            <textarea value={form.discovery_notes} onChange={e => update('discovery_notes', e.target.value)} rows={3}
+              placeholder="Anything else useful: history, decision-makers, deadlines, vibes."
+              className="w-full bg-elevated border border-border rounded-md px-3 py-2 text-[13px] focus:border-accent focus:outline-none resize-none" />
           </FormField>
         </div>
       </div>

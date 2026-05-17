@@ -531,6 +531,85 @@ export async function initDatabase() {
     CREATE INDEX IF NOT EXISTS idx_portal_activity_client ON portal_activity(client_id);
   `);
 
+  // ══════════════════════════════════════════════════════════════
+  //  SERVICE DESK — internal notes, tasks, conversions, merges
+  // ══════════════════════════════════════════════════════════════
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS service_desk_notes (
+      id TEXT PRIMARY KEY,
+      request_type TEXT NOT NULL,
+      request_id TEXT NOT NULL,
+      author TEXT DEFAULT '',
+      body TEXT NOT NULL,
+      created_at TEXT DEFAULT (datetime('now'))
+    );
+    CREATE INDEX IF NOT EXISTS idx_sd_notes_req ON service_desk_notes(request_type, request_id);
+
+    CREATE TABLE IF NOT EXISTS service_desk_tasks (
+      id TEXT PRIMARY KEY,
+      client_id TEXT DEFAULT '',
+      source_request_type TEXT DEFAULT '',
+      source_request_id TEXT DEFAULT '',
+      title TEXT NOT NULL,
+      description TEXT DEFAULT '',
+      assignee TEXT DEFAULT '',
+      status TEXT DEFAULT 'todo',
+      priority TEXT DEFAULT 'medium',
+      due_at TEXT DEFAULT '',
+      checklist TEXT DEFAULT '[]',
+      effort_estimate TEXT DEFAULT '',
+      created_at TEXT DEFAULT (datetime('now')),
+      updated_at TEXT DEFAULT (datetime('now'))
+    );
+    CREATE INDEX IF NOT EXISTS idx_sd_tasks_status ON service_desk_tasks(status);
+    CREATE INDEX IF NOT EXISTS idx_sd_tasks_assignee ON service_desk_tasks(assignee);
+    CREATE INDEX IF NOT EXISTS idx_sd_tasks_client ON service_desk_tasks(client_id);
+  `);
+
+  // ── Migrate portal_tickets: assignee / SLA / merge / tags / effort ──
+  const ticketMigrations = [
+    ['assignee_name',  "TEXT DEFAULT ''"],
+    ['sla_due_at',     "TEXT DEFAULT ''"],
+    ['escalated',      "INTEGER DEFAULT 0"],
+    ['merged_into',    "TEXT DEFAULT ''"],
+    ['effort_estimate',"TEXT DEFAULT ''"],
+    ['tags',           "TEXT DEFAULT '[]'"],
+    ['source',         "TEXT DEFAULT 'portal'"],
+    ['last_admin_view_at', "TEXT DEFAULT ''"],
+    ['first_response_at',  "TEXT DEFAULT ''"],
+    ['attachments',    "TEXT DEFAULT '[]'"],
+  ];
+  for (const [col, typedef] of ticketMigrations) {
+    try { rawDb.run(`ALTER TABLE portal_tickets ADD COLUMN ${col} ${typedef}`); } catch {}
+  }
+
+  // ── Migrate portal_clients: expanded discovery / preferences profile ──
+  const clientMigrations = [
+    ['goals',                    "TEXT DEFAULT ''"],
+    ['requested_services',       "TEXT DEFAULT '[]'"],
+    ['business_challenges',      "TEXT DEFAULT ''"],
+    ['discovery_notes',          "TEXT DEFAULT ''"],
+    ['communication_preferences',"TEXT DEFAULT ''"],
+    ['account_manager',          "TEXT DEFAULT ''"],
+    ['priority_level',           "TEXT DEFAULT 'standard'"],
+    ['niche',                    "TEXT DEFAULT ''"],
+    ['monthly_retainer',         "REAL DEFAULT 0"],
+  ];
+  for (const [col, typedef] of clientMigrations) {
+    try { rawDb.run(`ALTER TABLE portal_clients ADD COLUMN ${col} ${typedef}`); } catch {}
+  }
+
+  // ── Migrate portal_messages: subject + admin tracking ──
+  const messageMigrations = [
+    ['subject',       "TEXT DEFAULT ''"],
+    ['handled',       "INTEGER DEFAULT 0"],
+    ['handled_at',    "TEXT DEFAULT ''"],
+    ['handled_by',    "TEXT DEFAULT ''"],
+  ];
+  for (const [col, typedef] of messageMigrations) {
+    try { rawDb.run(`ALTER TABLE portal_messages ADD COLUMN ${col} ${typedef}`); } catch {}
+  }
+
   // ── Public Inquiries (homepage contact form) ──
   db.exec(`
     CREATE TABLE IF NOT EXISTS inquiries (

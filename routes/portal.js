@@ -227,10 +227,14 @@ router.post('/tickets', async (req, res) => {
   if (!description || description.trim().length < 5) return res.status(400).json({ error: 'Description required (min 5 chars)' });
 
   const id = uuid();
-  db.prepare(`INSERT INTO portal_tickets (id, client_id, subject, description, priority, category) VALUES (?,?,?,?,?,?)`)
+  const finalPriority = ['low','medium','high','urgent'].includes(priority) ? priority : 'medium';
+  const finalCategory = ['general','bug','content','design','billing','technical','revision','seo','asset_upload'].includes(category) ? category : 'general';
+  // Auto-compute SLA target by priority
+  const slaHours = { urgent: 2, high: 8, medium: 24, low: 72 }[finalPriority];
+  const slaDue = new Date(Date.now() + slaHours * 3600 * 1000).toISOString();
+  db.prepare(`INSERT INTO portal_tickets (id, client_id, subject, description, priority, category, sla_due_at, source) VALUES (?,?,?,?,?,?,?,?)`)
     .run(id, client.id, subject.trim().slice(0, 300), description.trim().slice(0, 8000),
-         ['low','medium','high','urgent'].includes(priority) ? priority : 'medium',
-         ['general','bug','content','design','billing','technical'].includes(category) ? category : 'general');
+         finalPriority, finalCategory, slaDue, 'portal');
 
   // Seed the first message
   db.prepare(`INSERT INTO portal_ticket_messages (id, ticket_id, author, author_name, body) VALUES (?,?,?,?,?)`)
