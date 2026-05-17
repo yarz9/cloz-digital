@@ -182,6 +182,111 @@ Press `?` anywhere (outside an input). Add new entries to
 
 ---
 
+## Server state — TanStack Query (Phase 2.1, landed)
+
+The app uses TanStack Query v5 for **all** server data fetching going
+forward. Replace any new `useEffect(() => fetch(…))` with the hooks
+in `src/hooks/queries/`.
+
+### Where things live
+
+```
+src/
+├── lib/
+│   ├── queryClient.js       # The single shared QueryClient (defaults)
+│   └── fetcher.js           # api.get / .post / .patch / .delete  + ApiError
+└── hooks/
+    └── queries/
+        ├── keys.js          # qk.* — the only place query keys are spelled
+        ├── persistence.js   # Persistence Center
+        ├── serviceDesk.js   # Service Desk
+        ├── portalClients.js # /api/portal-admin
+        └── knowledge.js     # Knowledge Center
+```
+
+### Defaults (set once in `queryClient.js`)
+
+| Option | Value | Why |
+|---|---|---|
+| `staleTime` | 30s | Reasonable for an internal dashboard |
+| `gcTime` | 5 min | Keep recently-unmounted views warm |
+| `retry` | 1 | One auto-retry on transient failure |
+| `refetchOnWindowFocus` | false | Would be noisy across busy tabs |
+| `refetchOnReconnect` | true | Re-sync after a flaky connection |
+| Mutations `retry` | 0 | Don't double-create on the server |
+
+Override per hook when a stream needs to be hotter (status pings every
+30s, audit log every minute, etc.).
+
+### Pattern — read
+
+```jsx
+import { useArticles } from '@/hooks/queries/knowledge'
+
+function MyList() {
+  const { data, isLoading, error } = useArticles({ category: 'sales' })
+  if (isLoading) return <Loading />
+  if (error)     return <ErrorBlock error={error} />
+  return <List articles={data.articles} />
+}
+```
+
+### Pattern — write (with cache invalidation)
+
+```jsx
+import { useTakeSnapshot } from '@/hooks/queries/persistence'
+import { useToast } from '@/components/ui/Toast'
+
+const toast = useToast()
+const takeSnapshot = useTakeSnapshot()
+
+await takeSnapshot.mutateAsync()  // invalidates snapshots + status automatically
+toast.success('Snapshot created')
+
+// disabled = takeSnapshot.isPending
+```
+
+### Pattern — optimistic update
+
+`useCreateMarker` is the reference example:
+
+```jsx
+return useMutation({
+  mutationFn: (vars) => api.post('/api/persistence/markers', vars),
+  onMutate: async (vars) => {
+    await qc.cancelQueries({ queryKey: qk.persistence.markers() })
+    const previous = qc.getQueryData(qk.persistence.markers())
+    qc.setQueryData(qk.persistence.markers(), (old) => ({
+      markers: [{ ...optimisticRow, _optimistic: true }, ...(old?.markers || [])]
+    }))
+    return { previous }
+  },
+  onError:   (_e, _v, ctx) => qc.setQueryData(qk.persistence.markers(), ctx.previous),
+  onSettled: () => qc.invalidateQueries({ queryKey: qk.persistence.markers() }),
+})
+```
+
+The UI dims `_optimistic` rows so the operator sees the row appear
+instantly and knows the server hasn't yet confirmed.
+
+### Adding hooks for a new module
+
+1. Add the entity's key factory to `src/hooks/queries/keys.js`.
+2. Create `src/hooks/queries/<module>.js` with one `useX` per read and
+   one `useDoY` per mutation. Mirror the file structure of `persistence.js`.
+3. Always invalidate the right scope on mutation `onSuccess`:
+   - Detail-level update → invalidate the detail key **and** the list key.
+   - List mutation → invalidate the `<module>.all` umbrella key.
+4. Replace consumers' inline `fetch(...)` calls one component at a time.
+
+### Showcase consumer
+
+`src/features/management/Persistence.jsx` is fully migrated. Read it
+as the canonical pattern for tabs, mutations, optimistic updates, and
+toast integration.
+
+---
+
 ## Roll-out plan (incremental)
 
 The new look + UX is opt-in. Adopt it page-by-page:

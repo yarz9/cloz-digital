@@ -15,6 +15,7 @@
     "deploy": "npm run build && echo 'Ready to deploy. Push to GitHub and connect to Railway.'"
   },
   "dependencies": {
+    "@tanstack/react-query": "^5.100.10",
     "@tiptap/extension-code-block-lowlight": "^3.23.4",
     "@tiptap/extension-color": "^3.23.4",
     "@tiptap/extension-font-family": "^3.23.4",

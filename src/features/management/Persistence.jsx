@@ -1,34 +1,28 @@
 // Management → Persistence
-// Operational dashboard that proves data is durable: storage status,
-// per-table row counts + last-write timestamps, write-proof markers
-// that survive redeploys, audit log of every mutation, backup files
-// downloadable from /data/backups, optional Postgres ping.
+// Showcase consumer of the TanStack Query hook layer (Phase 2.1).
+// Every server interaction goes through src/hooks/queries/persistence.js.
 
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useState } from 'react'
 import {
   Database, HardDrive, RefreshCw, Loader2, AlertTriangle, CheckCircle2,
-  ShieldCheck, Download, Plus, FileArchive, ListChecks, Activity, Clock,
-  Server, AlertCircle, Search as SearchIcon, X, Bookmark, History,
+  Download, Plus, FileArchive, ListChecks, Activity, Clock,
+  Server, AlertCircle, Search as SearchIcon, X, Bookmark,
 } from 'lucide-react'
 import { useUser } from '@/contexts/UserContext'
-
-async function api(path, options = {}) {
-  const res = await fetch(`/api/persistence${path}`, {
-    headers: { 'Content-Type': 'application/json', ...(options.headers || {}) },
-    ...options,
-  })
-  const json = await res.json().catch(() => ({ error: 'Network error' }))
-  if (!res.ok) throw new Error(json.error || `Server returned ${res.status}`)
-  return json
-}
+import { useToast } from '@/components/ui/Toast'
+import {
+  usePersistenceStatus, usePersistenceTables, usePersistenceAudit,
+  usePersistenceAuditStats, usePersistenceMarkers, usePersistenceSnapshots,
+  usePostgresPing, useCreateMarker, useTakeSnapshot,
+} from '@/hooks/queries/persistence'
 
 const TABS = [
-  { key: 'overview',  label: 'Overview',     icon: Database },
-  { key: 'tables',    label: 'Tables',       icon: ListChecks },
-  { key: 'audit',     label: 'Audit Log',    icon: Activity },
-  { key: 'markers',   label: 'Write Proof',  icon: Bookmark },
-  { key: 'backups',   label: 'Backups',      icon: FileArchive },
-  { key: 'pg',        label: 'PostgreSQL',   icon: Server },
+  { key: 'overview', label: 'Overview',    icon: Database },
+  { key: 'tables',   label: 'Tables',      icon: ListChecks },
+  { key: 'audit',    label: 'Audit Log',   icon: Activity },
+  { key: 'markers',  label: 'Write Proof', icon: Bookmark },
+  { key: 'backups',  label: 'Backups',     icon: FileArchive },
+  { key: 'pg',       label: 'PostgreSQL',  icon: Server },
 ]
 
 export default function Persistence() {
@@ -37,7 +31,7 @@ export default function Persistence() {
     <div className="flex flex-col h-full">
       <div className="px-6 pt-5 pb-3 border-b border-border bg-surface">
         <h1 className="font-display font-bold text-[20px] flex items-center gap-2">
-          <ShieldCheck size={18} className="text-accent" />
+          <Database size={18} className="text-accent" />
           Persistence Center
         </h1>
         <p className="text-[11px] text-text-tertiary mt-0.5">
@@ -47,7 +41,7 @@ export default function Persistence() {
       <div className="px-6 border-b border-border bg-surface flex items-center gap-1 overflow-x-auto">
         {TABS.map(t => (
           <button key={t.key} onClick={() => setTab(t.key)}
-            className={`flex items-center gap-1.5 px-3 py-2.5 text-[12px] font-medium border-b-2 transition-colors whitespace-nowrap ${
+            className={`flex items-center gap-1.5 px-3 py-2.5 text-[12px] font-medium border-b-2 transition-colors whitespace-nowrap focus-ring ${
               tab === t.key ? 'border-accent text-accent' : 'border-transparent text-text-secondary hover:text-text-primary'
             }`}>
             <t.icon size={13} /> {t.label}
@@ -67,16 +61,10 @@ export default function Persistence() {
 }
 
 function Overview() {
-  const [status, setStatus] = useState(null)
-  const [busy, setBusy] = useState(false)
-  const load = useCallback(() => {
-    setBusy(true)
-    api('/status').then(setStatus).catch(() => setStatus({ error: true })).finally(() => setBusy(false))
-  }, [])
-  useEffect(() => { load() }, [load])
+  const { data: status, isFetching, refetch, error } = usePersistenceStatus()
 
-  if (!status) return <Loading />
-  if (status.error) return <div className="m-6 bg-error/5 border border-error/20 rounded p-4 text-error text-[12px]">Failed to load persistence status.</div>
+  if (!status && !error) return <Loading />
+  if (error) return <div className="m-6 bg-error/5 border border-error/20 rounded p-4 text-error text-[12px]">Failed to load: {error.message}</div>
 
   const s = status.storage
   const ok = s.persistent && s.fileExists && s.warnings.length === 0
@@ -85,13 +73,13 @@ function Overview() {
   return (
     <div className="h-full overflow-y-auto px-6 py-5 space-y-5">
       <div className="flex items-center justify-end">
-        <button onClick={load} disabled={busy} className="flex items-center gap-1 text-[11px] bg-elevated hover:bg-accent-muted text-text-secondary hover:text-accent px-2.5 py-1.5 rounded">
-          <RefreshCw size={11} className={busy ? 'animate-spin' : ''} /> Refresh
+        <button onClick={() => refetch()} disabled={isFetching}
+          className="flex items-center gap-1 text-[11px] bg-elevated hover:bg-accent-muted text-text-secondary hover:text-accent px-2.5 py-1.5 rounded focus-ring">
+          <RefreshCw size={11} className={isFetching ? 'animate-spin' : ''} /> Refresh
         </button>
       </div>
 
-      {/* Hero: durability state */}
-      <div className={`rounded-xl p-5 border ${ok ? 'bg-success/5 border-success/20' : 'bg-warning/5 border-warning/30'}`}>
+      <div className={`rounded-xl p-5 border animate-fade-up ${ok ? 'bg-success/5 border-success/20' : 'bg-warning/5 border-warning/30'}`}>
         <div className="flex items-start gap-3">
           {ok ? <CheckCircle2 size={22} className="text-success shrink-0 mt-0.5" />
               : <AlertTriangle size={22} className="text-warning shrink-0 mt-0.5" />}
@@ -113,26 +101,21 @@ function Overview() {
         </div>
       </div>
 
-      {/* KPIs */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <Kpi label="Tables"        value={status.tables} sub="schema objects" icon={Database} />
-        <Kpi label="Total rows"    value={status.total_rows?.toLocaleString()} sub="across all tables" icon={ListChecks} />
-        <Kpi label="Writes · 24h"  value={status.writes_24h?.toLocaleString()} sub={`${status.failed_24h || 0} failed`} icon={Activity} accent={status.failed_24h > 0 ? 'text-warning' : 'text-accent'} />
-        <Kpi label="Writes · 7d"   value={status.writes_7d?.toLocaleString()} sub="rolling window" icon={Clock} />
+        <Kpi label="Tables"       value={status.tables}                       sub="schema objects" icon={Database} />
+        <Kpi label="Total rows"   value={status.total_rows?.toLocaleString()} sub="across all tables" icon={ListChecks} />
+        <Kpi label="Writes · 24h" value={status.writes_24h?.toLocaleString()} sub={`${status.failed_24h || 0} failed`} icon={Activity} accent={status.failed_24h > 0 ? 'text-warning' : 'text-accent'} />
+        <Kpi label="Writes · 7d"  value={status.writes_7d?.toLocaleString()}  sub="rolling window" icon={Clock} />
       </div>
 
       <div className="grid md:grid-cols-2 gap-4">
         <Card title="Storage" icon={HardDrive}>
-          <Row label="DB path"     mono>{s.dbPath}</Row>
+          <Row label="DB path" mono>{s.dbPath}</Row>
           <Row label="Mount point" mono>{s.dataDir}</Row>
           <Row label="File size">{s.fileSizeKb?.toLocaleString()} KB</Row>
           <Row label="File last modified">{fmtTs(s.lastModified)}</Row>
-          <Row label="Persistent volume">
-            <Pill ok={s.persistent}>{s.persistent ? 'detected' : 'unverified'}</Pill>
-          </Row>
-          <Row label="Environment">
-            <Pill ok>{s.isProduction ? 'production' : 'development'} · {s.isRailway ? 'Railway' : 'local'}</Pill>
-          </Row>
+          <Row label="Persistent volume"><Pill ok={s.persistent}>{s.persistent ? 'detected' : 'unverified'}</Pill></Row>
+          <Row label="Environment"><Pill ok>{s.isProduction ? 'production' : 'development'} · {s.isRailway ? 'Railway' : 'local'}</Pill></Row>
         </Card>
 
         <Card title="Backups" icon={FileArchive}>
@@ -150,19 +133,17 @@ function Overview() {
         </Card>
 
         <Card title="PostgreSQL (future primary)" icon={Server}>
-          {status.postgres?.configured
-            ? (
-              <>
-                <Row label="Status"><Pill ok={status.postgres.ok}>{status.postgres.ok ? 'connected' : 'unreachable'}</Pill></Row>
-                {status.postgres.ok && <Row label="Latency">{status.postgres.latency_ms} ms</Row>}
-                {status.postgres.error && <Row label="Error" mono>{status.postgres.error}</Row>}
-              </>
-            )
-            : (
-              <p className="text-[12px] text-text-secondary">
-                <code className="bg-elevated px-1.5 py-0.5 rounded">DATABASE_URL</code> is not set. The app currently runs on SQLite on the Railway Volume (durable). When you provision Postgres on Railway, set <code>DATABASE_URL</code> and run <code className="bg-elevated px-1.5 py-0.5 rounded">node scripts/migrate-to-pg.js</code> to copy all existing data over.
-              </p>
-            )}
+          {status.postgres?.configured ? (
+            <>
+              <Row label="Status"><Pill ok={status.postgres.ok}>{status.postgres.ok ? 'connected' : 'unreachable'}</Pill></Row>
+              {status.postgres.ok && <Row label="Latency">{status.postgres.latency_ms} ms</Row>}
+              {status.postgres.error && <Row label="Error" mono>{status.postgres.error}</Row>}
+            </>
+          ) : (
+            <p className="text-[12px] text-text-secondary">
+              <code className="bg-elevated px-1.5 py-0.5 rounded">DATABASE_URL</code> is not set. The app currently runs on SQLite on the Railway Volume (durable). When you provision Postgres on Railway, set <code>DATABASE_URL</code> and run <code className="bg-elevated px-1.5 py-0.5 rounded">node scripts/migrate-to-pg.js</code> to copy all existing data over.
+            </p>
+          )}
         </Card>
       </div>
     </div>
@@ -170,17 +151,17 @@ function Overview() {
 }
 
 function TablesTab() {
-  const [tables, setTables] = useState(null)
+  const { data, isLoading } = usePersistenceTables()
   const [filter, setFilter] = useState('')
-  useEffect(() => { api('/tables').then(d => setTables(d.tables || [])).catch(() => setTables([])) }, [])
-  if (!tables) return <Loading />
+  if (isLoading) return <Loading />
+  const tables = data?.tables || []
   const filtered = tables.filter(t => !filter || t.table.toLowerCase().includes(filter.toLowerCase()))
   return (
     <div className="h-full overflow-y-auto px-6 py-5">
       <div className="flex items-center justify-between mb-3">
         <h2 className="font-display font-semibold text-[15px]">Per-table state</h2>
         <input value={filter} onChange={e => setFilter(e.target.value)} placeholder="Filter…"
-          className="bg-elevated border border-border rounded px-2.5 py-1.5 text-[12px] w-56 focus:border-accent focus:outline-none" />
+          className="bg-elevated border border-border rounded px-2.5 py-1.5 text-[12px] w-56 focus:border-accent focus:outline-none focus-ring" />
       </div>
       <div className="bg-surface border border-border rounded-lg overflow-hidden">
         <div className="grid grid-cols-12 px-4 py-2 text-[10px] uppercase tracking-wider text-text-tertiary font-semibold bg-elevated border-b border-border">
@@ -202,18 +183,10 @@ function TablesTab() {
 }
 
 function AuditTab() {
-  const [entries, setEntries] = useState(null)
-  const [stats, setStats] = useState(null)
   const [filter, setFilter] = useState({ entity_type: '', action: '', q: '' })
-  const load = useCallback(() => {
-    const p = new URLSearchParams()
-    if (filter.entity_type) p.set('entity_type', filter.entity_type)
-    if (filter.action) p.set('action', filter.action)
-    if (filter.q) p.set('q', filter.q)
-    api(`/audit?${p}`).then(d => setEntries(d.entries || []))
-  }, [filter])
-  useEffect(() => { load() }, [load])
-  useEffect(() => { api('/audit/stats').then(setStats).catch(() => {}) }, [])
+  const { data: auditData, isLoading } = usePersistenceAudit(filter)
+  const { data: stats } = usePersistenceAuditStats()
+  const entries = auditData?.entries
 
   return (
     <div className="h-full overflow-y-auto px-6 py-5 space-y-4">
@@ -242,9 +215,9 @@ function AuditTab() {
       <div className="bg-surface border border-border rounded-lg">
         <div className="p-3 border-b border-border flex items-center gap-2 flex-wrap">
           <input value={filter.q} onChange={e => setFilter(f => ({ ...f, q: e.target.value }))} placeholder="Search route or body…"
-            className="bg-elevated border border-border rounded px-2.5 py-1.5 text-[12px] w-72 focus:border-accent focus:outline-none" />
+            className="bg-elevated border border-border rounded px-2.5 py-1.5 text-[12px] w-72 focus:border-accent focus:outline-none focus-ring" />
           <input value={filter.entity_type} onChange={e => setFilter(f => ({ ...f, entity_type: e.target.value }))} placeholder="entity_type"
-            className="bg-elevated border border-border rounded px-2.5 py-1.5 text-[12px] w-40 focus:border-accent focus:outline-none" />
+            className="bg-elevated border border-border rounded px-2.5 py-1.5 text-[12px] w-40 focus:border-accent focus:outline-none focus-ring" />
           <select value={filter.action} onChange={e => setFilter(f => ({ ...f, action: e.target.value }))}
             className="bg-elevated border border-border rounded px-2 py-1.5 text-[12px]">
             <option value="">All actions</option>
@@ -259,7 +232,7 @@ function AuditTab() {
           <div className="col-span-1 text-right">Status</div>
           <div className="col-span-1 text-right">ms</div>
         </div>
-        {entries === null ? <Loading inset />
+        {isLoading ? <Loading inset />
           : entries.length === 0 ? <div className="py-10 text-center text-[12px] text-text-tertiary">No audit entries yet. Make any change in the app — it'll show up here.</div>
           : (
           <div className="max-h-[60vh] overflow-y-auto">
@@ -289,26 +262,29 @@ function ActionPill({ action }) {
 
 function MarkersTab() {
   const { user } = useUser()
-  const [markers, setMarkers] = useState(null)
+  const toast = useToast()
+  const { data: markersData } = usePersistenceMarkers()
+  const createMarker = useCreateMarker()
   const [payload, setPayload] = useState('')
-  const [busy, setBusy] = useState(false)
-  const load = () => api('/markers').then(d => setMarkers(d.markers || []))
-  useEffect(() => { load() }, [])
+
+  const markers = markersData?.markers
 
   const drop = async () => {
-    setBusy(true)
     try {
-      await api('/markers', { method: 'POST', body: JSON.stringify({
+      await createMarker.mutateAsync({
         payload: payload || `Marker dropped from Persistence Center at ${new Date().toISOString()}`,
         created_by: user?.name || '',
-      }) })
-      setPayload(''); load()
-    } finally { setBusy(false) }
+      })
+      setPayload('')
+      toast.success('Marker saved', { description: 'It will survive the next Railway redeploy.' })
+    } catch (e) {
+      toast.error('Could not save marker', { description: e.message })
+    }
   }
 
   return (
     <div className="h-full overflow-y-auto px-6 py-5 space-y-4">
-      <div className="bg-surface border border-border rounded-lg p-5">
+      <div className="card-premium">
         <h2 className="font-display font-semibold text-[14px] mb-2 flex items-center gap-1.5">
           <Bookmark size={13} className="text-accent" /> Write-proof markers
         </h2>
@@ -317,10 +293,10 @@ function MarkersTab() {
         </p>
         <div className="flex gap-2">
           <input value={payload} onChange={e => setPayload(e.target.value)} placeholder="Optional note (e.g. 'before v2.3 deploy')"
-            className="flex-1 bg-elevated border border-border rounded px-3 py-2 text-[12px] focus:border-accent focus:outline-none" />
-          <button onClick={drop} disabled={busy}
-            className="bg-accent text-white text-[12px] font-semibold px-3 py-2 rounded flex items-center gap-1.5 disabled:opacity-50">
-            {busy ? <Loader2 size={11} className="animate-spin" /> : <Plus size={11} />} Drop marker
+            className="flex-1 bg-elevated border border-border rounded px-3 py-2 text-[12px] focus:border-accent focus:outline-none focus-ring" />
+          <button onClick={drop} disabled={createMarker.isPending}
+            className="button-premium !py-2 !px-3 focus-ring disabled:opacity-50">
+            {createMarker.isPending ? <Loader2 size={11} className="animate-spin" /> : <Plus size={11} />} Drop marker
           </button>
         </div>
       </div>
@@ -329,13 +305,14 @@ function MarkersTab() {
         <div className="px-4 py-2 text-[10px] uppercase tracking-wider text-text-tertiary font-semibold border-b border-border">
           Markers ({markers?.length || 0})
         </div>
-        {markers === null ? <Loading inset />
+        {markers === undefined ? <Loading inset />
           : markers.length === 0 ? <div className="py-10 text-center text-[12px] text-text-tertiary">No markers yet.</div>
           : markers.map(m => (
-            <div key={m.id} className="px-4 py-2 border-b border-border last:border-0 text-[12px] flex items-center gap-3">
+            <div key={m.id} className={`px-4 py-2 border-b border-border last:border-0 text-[12px] flex items-center gap-3 ${m._optimistic ? 'opacity-60' : ''}`}>
               <span className="text-text-tertiary font-mono text-[11px]">{new Date(m.created_at).toLocaleString()}</span>
               <span className="text-text-primary flex-1">{m.payload || '(no note)'}</span>
               {m.created_by && <span className="text-[10px] text-text-tertiary">{m.created_by}</span>}
+              {m._optimistic && <span className="text-[10px] text-accent italic">saving…</span>}
             </div>
           ))}
       </div>
@@ -344,17 +321,19 @@ function MarkersTab() {
 }
 
 function BackupsTab() {
-  const [snaps, setSnaps] = useState(null)
-  const [busy, setBusy] = useState(false)
-  const load = () => api('/snapshots').then(d => setSnaps(d.snapshots || []))
-  useEffect(() => { load() }, [])
+  const toast = useToast()
+  const { data: snapsData } = usePersistenceSnapshots()
+  const takeSnapshot = useTakeSnapshot()
+  const snaps = snapsData?.snapshots
+
   const takeNow = async () => {
-    setBusy(true)
-    try { const r = await api('/snapshots', { method: 'POST' });
-      alert(`Snapshot ${r.ok ? 'created' : 'failed'} — ${r.tables} tables · ${r.rows} rows · ${Math.round(r.bytes/1024)} KB`)
-      load()
-    } finally { setBusy(false) }
+    try {
+      const r = await takeSnapshot.mutateAsync()
+      toast.success(r.ok ? 'Snapshot created' : 'Snapshot failed',
+        { description: `${r.tables} tables · ${r.rows} rows · ${Math.round(r.bytes/1024)} KB` })
+    } catch (e) { toast.error('Snapshot failed', { description: e.message }) }
   }
+
   return (
     <div className="h-full overflow-y-auto px-6 py-5 space-y-4">
       <div className="flex items-center justify-between">
@@ -369,9 +348,9 @@ function BackupsTab() {
             className="text-[11px] bg-elevated hover:bg-accent-muted text-text-secondary hover:text-accent px-2.5 py-1.5 rounded flex items-center gap-1">
             <Download size={11} /> Live export
           </a>
-          <button onClick={takeNow} disabled={busy}
-            className="text-[12px] bg-accent text-white font-semibold px-3 py-1.5 rounded flex items-center gap-1.5 disabled:opacity-50">
-            {busy ? <Loader2 size={11} className="animate-spin" /> : <Plus size={11} />} Snapshot now
+          <button onClick={takeNow} disabled={takeSnapshot.isPending}
+            className="button-premium !py-1.5 !px-3 focus-ring disabled:opacity-50">
+            {takeSnapshot.isPending ? <Loader2 size={11} className="animate-spin" /> : <Plus size={11} />} Snapshot now
           </button>
         </div>
       </div>
@@ -383,7 +362,7 @@ function BackupsTab() {
           <div className="col-span-3">Modified</div>
           <div className="col-span-1 text-right">Get</div>
         </div>
-        {snaps === null ? <Loading inset />
+        {snaps === undefined ? <Loading inset />
           : snaps.length === 0
             ? <div className="py-10 text-center text-[12px] text-text-tertiary">No snapshots yet. Take one now or wait for the daily scheduler.</div>
             : snaps.map(s => (
@@ -408,12 +387,10 @@ function BackupsTab() {
 }
 
 function PgTab() {
-  const [pg, setPg] = useState(null)
-  const load = () => api('/pg').then(setPg)
-  useEffect(() => { load() }, [])
+  const { data: pg, refetch } = usePostgresPing()
   return (
     <div className="h-full overflow-y-auto px-6 py-5 space-y-4">
-      <div className="bg-surface border border-border rounded-lg p-5">
+      <div className="card-premium">
         <h2 className="font-display font-semibold text-[15px] mb-2 flex items-center gap-2"><Server size={14} className="text-accent" />PostgreSQL — future primary</h2>
         {!pg ? <Loading inset /> : !pg.configured ? (
           <div className="space-y-3 text-[12px] text-text-secondary leading-relaxed">
@@ -434,7 +411,7 @@ function PgTab() {
             {pg.ok && <Row label="Latency">{pg.latency_ms} ms</Row>}
             {pg.ok && <Row label="Server time" mono>{pg.server_time}</Row>}
             {pg.error && <Row label="Error" mono>{pg.error}</Row>}
-            <button onClick={load} className="mt-2 text-[11px] bg-elevated hover:bg-accent-muted text-text-secondary hover:text-accent px-2.5 py-1.5 rounded flex items-center gap-1">
+            <button onClick={() => refetch()} className="mt-2 text-[11px] bg-elevated hover:bg-accent-muted text-text-secondary hover:text-accent px-2.5 py-1.5 rounded flex items-center gap-1">
               <RefreshCw size={11} /> Re-ping
             </button>
           </div>
@@ -447,7 +424,7 @@ function PgTab() {
 // ── shared bits ──
 function Kpi({ label, value, sub, icon: Icon, accent = 'text-accent' }) {
   return (
-    <div className="bg-surface border border-border rounded-lg p-4">
+    <div className="card-premium hover-lift">
       <div className={`flex items-center gap-1.5 text-[10px] uppercase tracking-wider mb-1 ${accent}`}>
         <Icon size={11} /> {label}
       </div>
@@ -458,7 +435,7 @@ function Kpi({ label, value, sub, icon: Icon, accent = 'text-accent' }) {
 }
 function Card({ title, icon: Icon, children }) {
   return (
-    <div className="bg-surface border border-border rounded-lg p-4">
+    <div className="card-premium">
       <div className="text-[11px] uppercase tracking-wider text-text-tertiary font-semibold mb-2 flex items-center gap-1.5">
         {Icon && <Icon size={11} />} {title}
       </div>
