@@ -1,11 +1,14 @@
 import { useState, useEffect, useCallback } from 'react'
 import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom'
+import { useQueryClient } from '@tanstack/react-query'
 import {
   LayoutDashboard, MessageSquare, FolderOpen, Receipt, Server,
   FileCheck, FileSignature, Wrench, Sparkles, BookOpen, LogOut,
   Loader2, Palette, Send, AlertCircle, RefreshCw,
 } from 'lucide-react'
 import { portal, getToken, getCachedClient, setCachedClient, clearPortalSession } from '@/lib/portalApi'
+import { usePortalMe } from '@/hooks/queries/portal'
+import { qk } from '@/hooks/queries/keys'
 
 // ══════════════════════════════════════════════════════════════
 //  PORTAL LAYOUT — Auth guard + branded loading + sidebar
@@ -27,56 +30,54 @@ const NAV = [
 ]
 
 // Top-level state machine: initializing → ready / unauthenticated / error
+//
+// The auth check goes through usePortalMe() so the client object lives
+// in the TanStack cache. Every portal page can read it via
+// usePortalMe() without triggering an extra fetch, and re-mounting the
+// layout (e.g. after a hard nav) doesn't refetch when the cache is
+// fresh.
 export default function PortalLayout() {
   const navigate = useNavigate()
   const location = useLocation()
-  const [client, setClient] = useState(null)
-  const [phase, setPhase] = useState('initializing')  // initializing | ready | unauthenticated | error
+  const qc = useQueryClient()
+
+  const hasToken = !!getToken()
+  const meQuery = usePortalMe({ enabled: hasToken })
+
+  const [client, setClient] = useState(() => getCachedClient())
+  const [phase, setPhase] = useState(() => (!hasToken ? 'unauthenticated' : 'initializing'))
   const [error, setError] = useState('')
 
-  const init = useCallback(async () => {
-    setPhase('initializing')
-    setError('')
-
-    // No token at all → straight to login
-    if (!getToken()) {
+  // Sync server truth into local state + the legacy cache + the
+  // localStorage cache the way the old code did. Keeping the
+  // localStorage mirror means a hard refresh shows the client name
+  // instantly (before the query resolves).
+  useEffect(() => {
+    if (!hasToken) return
+    if (meQuery.isError) {
+      const e = meQuery.error
+      if (e?.status === 401) { setPhase('unauthenticated'); return }
+      setError(e?.message || 'Could not load your portal. Please retry.')
+      setPhase('error')
+      return
+    }
+    const fresh = meQuery.data?.client
+    if (!fresh) return
+    if (!fresh.id) {
+      clearPortalSession()
       setPhase('unauthenticated')
       return
     }
+    setClient(fresh)
+    setCachedClient(fresh)
+    setPhase('ready')
+  }, [hasToken, meQuery.isError, meQuery.error, meQuery.data])
 
-    // Optimistically use cached client while we verify with the server
-    const cached = getCachedClient()
-    if (cached && cached.id) {
-      setClient(cached)
-    }
-
-    try {
-      const res = await portal.me()
-      const fresh = res?.client
-      if (!fresh || !fresh.id) {
-        // Server says no valid session — treat as unauthenticated
-        clearPortalSession()
-        setPhase('unauthenticated')
-        return
-      }
-      setClient(fresh)
-      setCachedClient(fresh)
-      setPhase('ready')
-    } catch (e) {
-      // 401 → session is already cleared by portalApi; treat as unauthenticated
-      if (e?.status === 401) {
-        setPhase('unauthenticated')
-        return
-      }
-      // Anything else (500, network, timeout) → show retry UI but keep token
-      setError(e?.message || 'Could not load your portal. Please retry.')
-      setPhase('error')
-    }
-  }, [])
-
-  useEffect(() => {
-    init()
-  }, [init])
+  const init = useCallback(() => {
+    setError('')
+    setPhase(hasToken ? 'initializing' : 'unauthenticated')
+    if (hasToken) meQuery.refetch()
+  }, [hasToken, meQuery])
 
   // Redirect on unauthenticated
   useEffect(() => {
@@ -88,8 +89,9 @@ export default function PortalLayout() {
   const handleLogout = useCallback(async () => {
     try { await portal.logout() } catch {}
     clearPortalSession()
+    qc.removeQueries({ queryKey: qk.portal.all })  // drop every cached portal query
     navigate('/portal/login', { replace: true })
-  }, [navigate])
+  }, [navigate, qc])
 
   if (phase === 'initializing' || phase === 'unauthenticated') {
     return <BrandedLoadingScreen />

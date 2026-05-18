@@ -32,6 +32,23 @@ export const qk = {
     detail: (id) => ['portal-clients', 'detail', id],
   },
 
+  portal: {
+    all:           ['portal'],
+    me:            () => ['portal', 'me'],
+    dashboard:     () => ['portal', 'dashboard'],
+    tickets:       () => ['portal', 'tickets'],
+    ticket:        (id) => ['portal', 'ticket', id],
+    assets:        (folder) => ['portal', 'assets', folder || ''],
+    billing:       () => ['portal', 'billing'],
+    hosting:       () => ['portal', 'hosting'],
+    messages:      () => ['portal', 'messages'],
+    approvals:     () => ['portal', 'approvals'],
+    proposals:     () => ['portal', 'proposals'],
+    proposal:      (id) => ['portal', 'proposal', id],
+    maintenance:   () => ['portal', 'maintenance'],
+    knowledge:     () => ['portal', 'knowledge'],
+  },
+
   finance: {
     all:       ['finance'],
     overview:  () => ['finance', 'overview'],
