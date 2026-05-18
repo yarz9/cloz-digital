@@ -60,6 +60,7 @@ import localizationRoutes from './routes/localization.js';
 import knowledgeRoutes from './routes/knowledge.js';
 import { seedKnowledge } from './database/seedKnowledge.js';
 import persistenceRoutes from './routes/persistence.js';
+import financeRoutes from './routes/finance.js';
 import { auditMiddleware } from './database/auditLog.js';
 import { startSnapshotScheduler } from './database/snapshotScheduler.js';
 import { getStorageInfo } from './database/storageInfo.js';
@@ -143,6 +144,7 @@ app.use('/api/service-desk', apiLimiter, serviceDeskRoutes);
 app.use('/api/localization', apiLimiter, localizationRoutes);
 app.use('/api/knowledge', apiLimiter, knowledgeRoutes);
 app.use('/api/persistence', apiLimiter, persistenceRoutes);
+app.use('/api/finance', apiLimiter, financeRoutes);
 
 // ── Public inquiry endpoint: stricter rate limit to deter abuse ──
 const inquiryLimiter = rateLimit({

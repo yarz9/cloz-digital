@@ -611,6 +611,83 @@ export async function initDatabase() {
   }
 
   // ══════════════════════════════════════════════════════════════
+  //  CRM FINANCE — Invoices, Payments, Retainers (management-scope)
+  //
+  //  Separate from portal_invoices (which are per-client billing
+  //  surfaced inside the Client Portal). These tables back the
+  //  internal Revenue / Billing / Payments dashboards.
+  // ══════════════════════════════════════════════════════════════
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS crm_invoices (
+      id TEXT PRIMARY KEY,
+      invoice_number TEXT DEFAULT '',
+      client_id TEXT DEFAULT '',
+      client_name TEXT DEFAULT '',
+      amount REAL DEFAULT 0,
+      currency TEXT DEFAULT 'BAM',
+      status TEXT DEFAULT 'draft',
+      description TEXT DEFAULT '',
+      line_items TEXT DEFAULT '[]',
+      tax_amount REAL DEFAULT 0,
+      issued_date TEXT DEFAULT '',
+      due_date TEXT DEFAULT '',
+      paid_date TEXT DEFAULT '',
+      notes TEXT DEFAULT '',
+      created_at TEXT DEFAULT (datetime('now')),
+      updated_at TEXT DEFAULT (datetime('now'))
+    );
+    CREATE INDEX IF NOT EXISTS idx_crm_invoices_status ON crm_invoices(status);
+    CREATE INDEX IF NOT EXISTS idx_crm_invoices_client ON crm_invoices(client_id);
+    CREATE INDEX IF NOT EXISTS idx_crm_invoices_issued ON crm_invoices(issued_date);
+
+    CREATE TABLE IF NOT EXISTS crm_payments (
+      id TEXT PRIMARY KEY,
+      invoice_id TEXT DEFAULT '',
+      client_id TEXT DEFAULT '',
+      client_name TEXT DEFAULT '',
+      amount REAL DEFAULT 0,
+      currency TEXT DEFAULT 'BAM',
+      method TEXT DEFAULT 'bank_transfer',
+      reference TEXT DEFAULT '',
+      received_date TEXT DEFAULT '',
+      notes TEXT DEFAULT '',
+      created_at TEXT DEFAULT (datetime('now'))
+    );
+    CREATE INDEX IF NOT EXISTS idx_crm_payments_invoice ON crm_payments(invoice_id);
+    CREATE INDEX IF NOT EXISTS idx_crm_payments_received ON crm_payments(received_date);
+
+    CREATE TABLE IF NOT EXISTS crm_retainers (
+      id TEXT PRIMARY KEY,
+      client_id TEXT DEFAULT '',
+      client_name TEXT DEFAULT '',
+      package TEXT DEFAULT '',
+      monthly_amount REAL DEFAULT 0,
+      currency TEXT DEFAULT 'BAM',
+      status TEXT DEFAULT 'active',
+      start_date TEXT DEFAULT '',
+      end_date TEXT DEFAULT '',
+      billing_day INTEGER DEFAULT 1,
+      notes TEXT DEFAULT '',
+      created_at TEXT DEFAULT (datetime('now')),
+      updated_at TEXT DEFAULT (datetime('now'))
+    );
+    CREATE INDEX IF NOT EXISTS idx_crm_retainers_status ON crm_retainers(status);
+    CREATE INDEX IF NOT EXISTS idx_crm_retainers_client ON crm_retainers(client_id);
+
+    CREATE TABLE IF NOT EXISTS crm_forecast_snapshots (
+      id TEXT PRIMARY KEY,
+      generated_at TEXT DEFAULT (datetime('now')),
+      generated_by TEXT DEFAULT '',
+      horizon_months INTEGER DEFAULT 6,
+      summary TEXT DEFAULT '',
+      breakdown TEXT DEFAULT '[]',
+      assumptions TEXT DEFAULT '',
+      model TEXT DEFAULT ''
+    );
+    CREATE INDEX IF NOT EXISTS idx_crm_forecast_generated ON crm_forecast_snapshots(generated_at);
+  `);
+
+  // ══════════════════════════════════════════════════════════════
   //  PERSISTENCE / AUDIT — write-capture log + write-proof marker
   // ══════════════════════════════════════════════════════════════
   db.exec(`
