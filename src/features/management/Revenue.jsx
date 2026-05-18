@@ -8,6 +8,54 @@ import { ai } from '@/lib/api'
 import { useAI } from '@/hooks/useAI'
 import { useStore } from '@/stores/management'
 import EmptyState from '@/components/EmptyState'
+import { Skeleton } from '@/components/ui/Skeleton'
+import {
+  useInvoices, useRetainers, useRevenueOverview,
+  useGenerateAIForecast, useForecastSnapshots,
+} from '@/hooks/queries/finance'
+import { useToast } from '@/components/ui/Toast'
+import { useUser } from '@/contexts/UserContext'
+import FinanceImportPrompt from './FinanceImportPrompt'
+
+// Adapter — normalises a /api/finance/invoices row onto the legacy
+// shape that computeMetrics + every tab still expects. Lets us swap
+// the data source without rewriting 800+ lines of derived analysis.
+function adaptInvoice(row) {
+  return {
+    ...row,
+    id: row.invoice_number || row.id,
+    client: row.client_name || '',
+    issued: row.issued_date || '',
+    due: row.due_date || '',
+    paid: row.paid_date || '',
+    amount: row.amount || 0,
+  }
+}
+
+// Merge backend retainers into the legacy `clients` shape used by
+// computeMetrics' MRR / LTV / churn logic. Each retainer becomes a
+// pseudo-client with mrr=monthly_amount; if a real Zustand client of
+// the same name already exists we update its mrr in place.
+function mergeRetainers(zustandClients, retainers) {
+  const out = (zustandClients || []).map(c => ({ ...c }))
+  const byName = new Map(out.map(c => [(c.name || '').toLowerCase(), c]))
+  for (const r of (retainers || [])) {
+    const key = (r.client_name || '').toLowerCase()
+    if (byName.has(key)) {
+      byName.get(key).mrr = r.monthly_amount || 0
+      byName.get(key).package = byName.get(key).package || r.package || ''
+    } else {
+      out.push({
+        id: r.id,
+        name: r.client_name || '(retainer)',
+        package: r.package || '',
+        mrr: r.monthly_amount || 0,
+        healthScore: 80,
+      })
+    }
+  }
+  return out
+}
 
 // ══════════════════════════════════════════════════════════════
 //  REVENUE — Financial Intelligence & Executive Dashboard
@@ -36,13 +84,30 @@ const TABS = [
 ]
 
 export default function Revenue() {
-  const invoices = useStore(s => s.invoices)
-  const clients = useStore(s => s.clients)
-  const deals = useStore(s => s.deals)
+  // ── Authoritative finance data — PostgreSQL via TanStack Query ──
+  const invoicesQuery  = useInvoices()
+  const retainersQuery = useRetainers()
+  const overviewQuery  = useRevenueOverview()
+
+  // CRM analytics inputs (LTV / churn) — still Zustand stubs until
+  // the Clients + Pipeline backends land in their own focused work.
+  const zustandClients = useStore(s => s.clients)
+  const deals          = useStore(s => s.deals)
+
   const [tab, setTab] = useState('overview')
 
-  const metrics = useMemo(() => computeMetrics({ invoices, clients, deals }), [invoices, clients, deals])
-  const hasData = invoices.length > 0 || clients.length > 0 || deals.length > 0
+  const invoices  = useMemo(
+    () => (invoicesQuery.data?.invoices || []).map(adaptInvoice),
+    [invoicesQuery.data]
+  )
+  const clients   = useMemo(
+    () => mergeRetainers(zustandClients, retainersQuery.data?.retainers || []),
+    [zustandClients, retainersQuery.data]
+  )
+
+  const metrics  = useMemo(() => computeMetrics({ invoices, clients, deals }), [invoices, clients, deals])
+  const loading  = invoicesQuery.isLoading || retainersQuery.isLoading || overviewQuery.isLoading
+  const hasData  = invoices.length > 0 || clients.length > 0 || deals.length > 0
 
   return (
     <div className="p-6 max-w-[1400px] mx-auto space-y-5">
@@ -54,11 +119,14 @@ export default function Revenue() {
         </div>
       </div>
 
+      {/* One-time legacy localStorage lift */}
+      <FinanceImportPrompt backendOverview={overviewQuery.data} />
+
       {/* Tab nav */}
       <div className="flex items-center gap-1 bg-surface border border-border rounded-lg p-1 overflow-x-auto">
         {TABS.map(t => (
           <button key={t.key} onClick={() => setTab(t.key)}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[12px] font-medium whitespace-nowrap transition-colors ${
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[12px] font-medium whitespace-nowrap transition-colors focus-ring ${
               tab === t.key ? 'bg-accent-muted text-accent' : 'text-text-tertiary hover:text-text-secondary hover:bg-elevated'
             }`}>
             <t.icon size={12} />{t.label}
@@ -66,7 +134,17 @@ export default function Revenue() {
         ))}
       </div>
 
-      {!hasData ? (
+      {loading && !hasData ? (
+        <div className="grid grid-cols-4 gap-3">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div key={i} className="card-premium space-y-2">
+              <Skeleton className="h-2.5 w-16" />
+              <Skeleton className="h-7 w-28" />
+              <Skeleton className="h-2 w-20" />
+            </div>
+          ))}
+        </div>
+      ) : !hasData ? (
         <div className="bg-surface border border-border rounded-lg">
           <EmptyState
             icon={TrendingUp}
@@ -640,6 +718,9 @@ function ForecastingTab({ metrics, deals }) {
         <KPI label="Weighted Pipeline"    value={fmtBAM(metrics.weightedPipeline)} sub={`${metrics.activeDeals.length} active deals`} color="text-info" />
       </div>
 
+      <AIForecastSnapshotCard />
+
+
       <Card title="Pipeline by Stage" subtitle="Weighted value uses stage probability or per-deal probability when set">
         {metrics.activeDeals.length === 0 ? (
           <p className="text-[12px] text-text-tertiary text-center py-4">No active deals. <a href="/management/pipeline" className="text-accent">Open Pipeline →</a></p>
@@ -687,6 +768,122 @@ function ForecastingTab({ metrics, deals }) {
       <Card title="Budget Planning" subtitle="Simple year-to-date pacing — useful for setting an annual revenue target">
         <BudgetPlanner ytd={metrics.ytd} monthly={metrics.monthly} mrr={metrics.mrr} />
       </Card>
+    </div>
+  )
+}
+
+// AI forecast snapshot — persists to crm_forecast_snapshots via the
+// mutation, invalidates overview + forecast + snapshots on success.
+function AIForecastSnapshotCard() {
+  const toast = useToast()
+  const { user } = useUser()
+  const snapshotsQuery = useForecastSnapshots()
+  const generate = useGenerateAIForecast()
+  const [horizon, setHorizon] = useState(6)
+  const [notes, setNotes] = useState('')
+  const [latest, setLatest] = useState(null)
+
+  const run = async () => {
+    try {
+      const r = await generate.mutateAsync({ horizon, notes, generated_by: user?.name || '' })
+      setLatest(r)
+      toast.success('AI forecast snapshot saved', { description: `Persisted to crm_forecast_snapshots (${horizon}-mo horizon)` })
+    } catch (e) { toast.error('AI forecast failed', { description: e.message }) }
+  }
+
+  const recent = snapshotsQuery.data?.snapshots || []
+  const show = latest || recent[0]
+
+  return (
+    <div className="card-premium">
+      <div className="flex items-start justify-between gap-3 mb-3 flex-wrap">
+        <div className="flex items-center gap-2">
+          <Brain size={14} className="text-accent" />
+          <h3 className="font-display font-semibold text-[14px]">AI Forecast — persisted snapshot</h3>
+        </div>
+        <div className="flex items-center gap-2">
+          <label className="text-[10px] text-text-tertiary uppercase tracking-wider">Horizon</label>
+          <select value={horizon} onChange={e => setHorizon(parseInt(e.target.value) || 6)}
+            className="bg-elevated border border-border rounded px-2 py-1 text-[11px] focus-ring">
+            {[3, 6, 9, 12].map(h => <option key={h} value={h}>{h} months</option>)}
+          </select>
+          <button onClick={run} disabled={generate.isPending}
+            className="button-premium !py-1.5 !px-3 focus-ring disabled:opacity-50">
+            {generate.isPending ? <><Loader2 size={11} className="animate-spin" /> Generating…</> : <><Sparkles size={11} /> Generate</>}
+          </button>
+        </div>
+      </div>
+
+      <input value={notes} onChange={e => setNotes(e.target.value)}
+        placeholder="Optional operator notes (e.g. 'big deal in flight, expect closure month 2')"
+        className="w-full bg-elevated border border-border rounded px-2.5 py-1.5 text-[12px] mb-3 focus:border-accent focus:outline-none focus-ring" />
+
+      {!show ? (
+        <p className="text-[12px] text-text-tertiary">
+          No snapshot yet. Generate one — it persists permanently and survives redeploys.
+        </p>
+      ) : (
+        <div className="space-y-3">
+          <div>
+            <div className="text-[10px] uppercase tracking-wider text-accent font-semibold mb-1">
+              Summary{show.generated_at && <span className="ml-2 text-text-tertiary normal-case">{new Date(show.generated_at).toLocaleString()}</span>}
+            </div>
+            <p className="text-[12px] text-text-primary whitespace-pre-wrap leading-relaxed">{show.summary || '—'}</p>
+          </div>
+          {show.assumptions && (
+            <div>
+              <div className="text-[10px] uppercase tracking-wider text-text-tertiary font-semibold mb-1">Assumptions</div>
+              <p className="text-[11px] text-text-secondary leading-relaxed">{show.assumptions}</p>
+            </div>
+          )}
+          {Array.isArray(show.breakdown) && show.breakdown.length > 0 && (
+            <div className="overflow-x-auto">
+              <table className="w-full text-[11px]">
+                <thead className="text-[9px] text-text-tertiary uppercase tracking-wider border-b border-border">
+                  <tr>
+                    <th className="py-1.5 pr-3 text-left">Month</th>
+                    <th className="py-1.5 pr-3 text-right">Recurring</th>
+                    <th className="py-1.5 pr-3 text-right">One-off</th>
+                    <th className="py-1.5 pr-3 text-right">Total</th>
+                    <th className="py-1.5 pr-3 text-left">Confidence</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border">
+                  {show.breakdown.map((b, i) => (
+                    <tr key={i}>
+                      <td className="py-1.5 pr-3 font-medium">{b.month_label || b.month || `M${i + 1}`}</td>
+                      <td className="py-1.5 pr-3 text-right">{fmtBAM(b.recurring)}</td>
+                      <td className="py-1.5 pr-3 text-right">{fmtBAM(b.oneoff)}</td>
+                      <td className="py-1.5 pr-3 text-right font-semibold text-accent">{fmtBAM(b.total)}</td>
+                      <td className="py-1.5 pr-3 capitalize">
+                        <span className={
+                          b.confidence === 'high' ? 'text-success' :
+                          b.confidence === 'low' ? 'text-warning' : 'text-text-secondary'
+                        }>{b.confidence || '—'}</span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
+
+      {recent.length > 1 && (
+        <details className="mt-4 text-[11px] text-text-tertiary">
+          <summary className="cursor-pointer hover:text-accent focus-ring rounded">
+            {recent.length} earlier snapshot{recent.length === 1 ? '' : 's'}
+          </summary>
+          <ul className="mt-2 space-y-1">
+            {recent.slice(1, 10).map(s => (
+              <li key={s.id} className="font-mono">
+                {new Date(s.generated_at).toLocaleString()} · {s.horizon_months}mo · {s.generated_by || '—'}
+              </li>
+            ))}
+          </ul>
+        </details>
+      )}
     </div>
   )
 }

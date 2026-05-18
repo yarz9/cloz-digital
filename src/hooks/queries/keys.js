@@ -32,6 +32,18 @@ export const qk = {
     detail: (id) => ['portal-clients', 'detail', id],
   },
 
+  finance: {
+    all:       ['finance'],
+    overview:  () => ['finance', 'overview'],
+    aging:     () => ['finance', 'aging'],
+    invoices:  (filters = {}) => ['finance', 'invoices', filters],
+    invoice:   (id) => ['finance', 'invoice', id],
+    payments:  (filters = {}) => ['finance', 'payments', filters],
+    retainers: (filters = {}) => ['finance', 'retainers', filters],
+    forecast:  (horizon = 6) => ['finance', 'forecast', horizon],
+    snapshots: () => ['finance', 'snapshots'],
+  },
+
   scout: {
     all:        ['scout'],
     meta:       () => ['scout', 'meta'],
