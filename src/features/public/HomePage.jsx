@@ -5,8 +5,14 @@ import {
   Mail, Compass, PenTool, Code2, Rocket, HeartPulse,
   Plus, Minus, Sparkles, MapPin, Languages, Smartphone, Gauge, Clock,
   CheckCircle2, Lock, ShieldCheck, MessageCircle, FileText, Calendar, Search,
+  ImageOff, Quote, ArrowDown,
 } from 'lucide-react'
+import { motion, useReducedMotion } from 'framer-motion'
 import { useT } from '@/i18n/I18nProvider'
+import { Reveal, RevealStagger, RevealItem } from '@/components/ui/motion/Reveal'
+import { CountUp } from '@/components/ui/motion/CountUp'
+import { MagneticButton } from '@/components/ui/motion/MagneticButton'
+import { SpotlightCard } from '@/components/ui/motion/SpotlightCard'
 
 // ══════════════════════════════════════════════════════════════
 //  HOMEPAGE — Production Landing Page (fully localized)
@@ -20,10 +26,13 @@ export default function HomePage() {
     <div className="bg-bg text-text-primary">
       <Hero />
       <TrustBar />
+      <NumbersStrip />
       <Services />
+      <CaseStudies />
       <Packages />
       <WhyChoose />
       <Process />
+      <Testimonials />
       <RiskReversal />
       <FAQ />
       <BookingPlaceholder />
@@ -35,52 +44,106 @@ export default function HomePage() {
 // ══════════════════════════════════════════════════════════════
 function Hero() {
   const t = useT()
+  const reduce = useReducedMotion()
+
+  // Page-load choreography. Each block waits its turn. On
+  // prefers-reduced-motion these collapse to opacity-only.
+  const stagger = {
+    hidden: { opacity: 1 },
+    show: { opacity: 1, transition: { staggerChildren: reduce ? 0 : 0.08, delayChildren: reduce ? 0 : 0.05 } },
+  }
+  const item = reduce
+    ? { hidden: { opacity: 1 }, show: { opacity: 1 } }
+    : {
+        hidden: { opacity: 0, y: 18 },
+        show:   { opacity: 1, y: 0, transition: { duration: 0.7, ease: [0.16, 1, 0.3, 1] } },
+      }
+
   return (
-    <section className="relative pt-32 pb-24 md:pt-40 md:pb-32 px-6 overflow-hidden section-glow">
+    <section className="relative pt-32 pb-24 md:pt-40 md:pb-32 px-6 overflow-hidden section-glow noise-overlay">
       {/* Layered ambient lights */}
       <div className="absolute inset-0 pointer-events-none" aria-hidden="true">
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[1000px] h-[1000px] rounded-full opacity-[0.10] animate-glow-pulse"
-          style={{ background: 'radial-gradient(circle, var(--color-accent) 0%, transparent 60%)' }} />
-        <div className="absolute top-20 right-1/4 w-[400px] h-[400px] rounded-full opacity-[0.05]"
-          style={{ background: 'radial-gradient(circle, #B594D6 0%, transparent 60%)' }} />
+        <motion.div
+          className="absolute top-0 left-1/2 -translate-x-1/2 w-[1000px] h-[1000px] rounded-full"
+          style={{ background: 'radial-gradient(circle, var(--color-accent) 0%, transparent 60%)' }}
+          initial={{ opacity: 0, scale: 0.92 }}
+          animate={{ opacity: 0.12, scale: 1 }}
+          transition={{ duration: 1.4, ease: [0.16, 1, 0.3, 1] }}
+        />
+        <motion.div
+          className="absolute top-20 right-1/4 w-[400px] h-[400px] rounded-full"
+          style={{ background: 'radial-gradient(circle, #B594D6 0%, transparent 60%)' }}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 0.06 }}
+          transition={{ duration: 1.6, delay: 0.2 }}
+        />
       </div>
 
       <div className="relative max-w-[1200px] mx-auto">
-        <div className="max-w-[820px]">
-          <div className="inline-flex items-center gap-2 px-3 py-1 mb-6 rounded-full bg-accent-muted border border-accent/20 animate-fade-up">
+        <motion.div className="max-w-[820px]" variants={stagger} initial="hidden" animate="show">
+          <motion.div
+            variants={item}
+            className="inline-flex items-center gap-2 px-3 py-1 mb-6 rounded-full bg-accent-muted border border-accent/20"
+          >
             <span className="w-1.5 h-1.5 rounded-full bg-accent animate-glow-pulse" />
             <span className="text-[11px] font-medium text-accent uppercase tracking-wider">{t('home.hero.eyebrow')}</span>
-          </div>
+          </motion.div>
 
-          <h1 className="font-display font-bold text-[44px] md:text-[64px] leading-[1.05] tracking-tight animate-fade-up stagger-1">
+          <motion.h1
+            variants={item}
+            className="font-display font-bold text-[44px] md:text-[64px] leading-[1.05] tracking-tight"
+          >
             {t('home.hero.h1.line1')}<br />
             <span className="text-gradient">{t('home.hero.h1.line2')}</span><br />
             {t('home.hero.h1.line3')}
-          </h1>
+          </motion.h1>
 
-          <p className="mt-7 text-[16px] md:text-[18px] text-text-secondary leading-relaxed max-w-[640px] animate-fade-up stagger-2">
+          <motion.p
+            variants={item}
+            className="mt-7 text-[16px] md:text-[18px] text-text-secondary leading-relaxed max-w-[640px]"
+          >
             {t('home.hero.sub')}
-          </p>
+          </motion.p>
 
-          <div className="mt-10 flex flex-col sm:flex-row gap-3 animate-fade-up stagger-3">
-            <Link to="/contact" className="button-premium focus-ring">
+          <motion.div variants={item} className="mt-10 flex flex-col sm:flex-row gap-3">
+            <MagneticButton href="/contact" className="button-premium focus-ring no-underline">
               {t('home.hero.ctaPrimary')}
               <ArrowUpRight size={15} />
-            </Link>
-            <a href="#packages" className="button-premium ghost focus-ring">
+            </MagneticButton>
+            <MagneticButton href="#packages" className="button-premium ghost focus-ring no-underline" pullStrength={0.18}>
               {t('home.hero.ctaSecondary')}
               <ArrowRight size={14} />
-            </a>
-          </div>
+            </MagneticButton>
+          </motion.div>
 
-          <div className="mt-12 flex flex-wrap items-center gap-x-8 gap-y-3 text-[12px] text-text-tertiary animate-fade-up stagger-4">
+          <motion.div variants={item} className="mt-12 flex flex-wrap items-center gap-x-8 gap-y-3 text-[12px] text-text-tertiary">
             <span className="flex items-center gap-1.5"><Check size={12} className="text-accent" /> {t('home.hero.trust1')}</span>
             <span className="flex items-center gap-1.5"><Check size={12} className="text-accent" /> {t('home.hero.trust2')}</span>
             <span className="flex items-center gap-1.5"><Check size={12} className="text-accent" /> {t('home.hero.trust3')}</span>
             <span className="flex items-center gap-1.5"><Check size={12} className="text-accent" /> {t('home.hero.trust4')}</span>
-          </div>
-        </div>
+          </motion.div>
+        </motion.div>
       </div>
+
+      {/* Scroll cue */}
+      {!reduce && (
+        <motion.a
+          href="#services"
+          aria-label="Scroll to services"
+          className="hidden md:flex absolute bottom-8 left-1/2 -translate-x-1/2 flex-col items-center gap-1 text-text-tertiary hover:text-accent"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 0.6 }}
+          transition={{ delay: 1.2, duration: 0.6 }}
+        >
+          <span className="text-[10px] uppercase tracking-[0.2em]">Scroll</span>
+          <motion.span
+            animate={{ y: [0, 6, 0] }}
+            transition={{ duration: 1.8, repeat: Infinity, ease: 'easeInOut' }}
+          >
+            <ArrowDown size={14} />
+          </motion.span>
+        </motion.a>
+      )}
     </section>
   )
 }
@@ -129,17 +192,19 @@ function Services() {
           title={t('home.services.title')}
           subtitle={t('home.services.sub')}
         />
-        <div className="mt-14 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-          {services.map((s, i) => (
-            <div key={s.t} className={`card-premium with-sheen animate-fade-up stagger-${(i % 6) + 1} group`}>
-              <div className="w-10 h-10 rounded-lg bg-accent-muted flex items-center justify-center mb-4 group-hover:bg-accent/20 transition-colors">
-                <s.icon size={18} className="text-accent" />
-              </div>
-              <h3 className="font-display font-semibold text-[16px] mb-2">{s.t}</h3>
-              <p className="text-[13px] text-text-secondary leading-relaxed">{s.d}</p>
-            </div>
+        <RevealStagger className="mt-14 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+          {services.map((s) => (
+            <RevealItem key={s.t}>
+              <SpotlightCard className="group h-full">
+                <div className="w-10 h-10 rounded-lg bg-accent-muted flex items-center justify-center mb-4 group-hover:bg-accent/20 transition-colors">
+                  <s.icon size={18} className="text-accent" />
+                </div>
+                <h3 className="font-display font-semibold text-[16px] mb-2">{s.t}</h3>
+                <p className="text-[13px] text-text-secondary leading-relaxed">{s.d}</p>
+              </SpotlightCard>
+            </RevealItem>
           ))}
-        </div>
+        </RevealStagger>
       </div>
     </section>
   )
@@ -248,15 +313,17 @@ function WhyChoose() {
           title={t('home.why.title')}
           subtitle={t('home.why.sub')}
         />
-        <div className="mt-14 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {differentiators.map((d, i) => (
-            <div key={d.t} className={`card-premium hover-lift animate-fade-up stagger-${(i % 6) + 1}`}>
-              <d.icon size={18} className="text-accent mb-3" strokeWidth={1.8} />
-              <h3 className="font-display font-semibold text-[15px] mb-1.5">{d.t}</h3>
-              <p className="text-[13px] text-text-secondary leading-relaxed">{d.d}</p>
-            </div>
+        <RevealStagger className="mt-14 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {differentiators.map((d) => (
+            <RevealItem key={d.t}>
+              <SpotlightCard className="h-full">
+                <d.icon size={18} className="text-accent mb-3" strokeWidth={1.8} />
+                <h3 className="font-display font-semibold text-[15px] mb-1.5">{d.t}</h3>
+                <p className="text-[13px] text-text-secondary leading-relaxed">{d.d}</p>
+              </SpotlightCard>
+            </RevealItem>
           ))}
-        </div>
+        </RevealStagger>
       </div>
     </section>
   )
@@ -279,16 +346,18 @@ function Process() {
           title={t('home.proc.title')}
           subtitle={t('home.proc.sub')}
         />
-        <div className="mt-14 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
-          {process.map((p, i) => (
-            <div key={p.num} className={`card-premium hover-lift animate-fade-up stagger-${i + 1}`}>
-              <span className="font-display font-bold text-[11px] text-gradient-accent tracking-wider">{p.num}</span>
-              <p.icon size={18} className="text-text-secondary mt-3 mb-3" strokeWidth={1.8} />
-              <h3 className="font-display font-semibold text-[14px] mb-1.5">{p.t}</h3>
-              <p className="text-[12px] text-text-tertiary leading-relaxed">{p.d}</p>
-            </div>
+        <RevealStagger className="mt-14 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+          {process.map((p) => (
+            <RevealItem key={p.num}>
+              <div className="card-premium hover-lift h-full">
+                <span className="font-display font-bold text-[11px] text-gradient-accent tracking-wider">{p.num}</span>
+                <p.icon size={18} className="text-text-secondary mt-3 mb-3" strokeWidth={1.8} />
+                <h3 className="font-display font-semibold text-[14px] mb-1.5">{p.t}</h3>
+                <p className="text-[12px] text-text-tertiary leading-relaxed">{p.d}</p>
+              </div>
+            </RevealItem>
           ))}
-        </div>
+        </RevealStagger>
       </div>
     </section>
   )
@@ -446,6 +515,142 @@ function FinalCTA() {
             </div>
           </div>
         </div>
+      </div>
+    </section>
+  )
+}
+
+// ══════════════════════════════════════════════════════════════
+//  NUMBERS STRIP — animated proof points right under the trust bar
+// ══════════════════════════════════════════════════════════════
+
+function NumbersStrip() {
+  const t = useT()
+  const stats = [
+    { value: '< 2h',     label: t('home.stats.respond.l'),   formatted: true },
+    { value: 100, suffix: '%', label: t('home.stats.ontime.l') },
+    { value: 2,             label: t('home.stats.languages.l') },
+    { value: 6, suffix: '+', label: t('home.stats.region.l') },
+  ]
+  return (
+    <section className="py-14 md:py-20 px-6 border-t border-border">
+      <div className="max-w-[1200px] mx-auto">
+        <Reveal className="mb-8">
+          <div className="text-[11px] font-semibold uppercase tracking-[0.15em] text-accent">{t('home.stats.eyebrow')}</div>
+        </Reveal>
+        <RevealStagger className="grid grid-cols-2 md:grid-cols-4 gap-5 md:gap-8">
+          {stats.map((s, i) => (
+            <RevealItem key={i} className="text-left">
+              <div className="font-display font-bold text-[36px] md:text-[48px] leading-none tracking-tight">
+                {s.formatted ? (
+                  <span className="text-gradient">{s.value}</span>
+                ) : (
+                  <span className="text-gradient">
+                    <CountUp to={s.value} suffix={s.suffix || ''} duration={1.4} />
+                  </span>
+                )}
+              </div>
+              <div className="mt-3 text-[12px] md:text-[13px] text-text-secondary leading-relaxed max-w-[220px]">{s.label}</div>
+            </RevealItem>
+          ))}
+        </RevealStagger>
+      </div>
+    </section>
+  )
+}
+
+// ══════════════════════════════════════════════════════════════
+//  CASE STUDIES — honest "coming soon" showcase
+// ══════════════════════════════════════════════════════════════
+
+function CaseStudies() {
+  const t = useT()
+  // Honesty over fakery: 3 elegantly blurred placeholders that say
+  // "coming soon" until we have real client stories to show.
+  const placeholders = [
+    { tag: 'Dental',         hue: '#5E8DB5' },
+    { tag: 'Hospitality',    hue: '#B594D6' },
+    { tag: 'Professional',   hue: '#7BA3C7' },
+  ]
+  return (
+    <section className="py-20 md:py-28 px-6 border-t border-border section-glow">
+      <div className="relative max-w-[1200px] mx-auto">
+        <Reveal>
+          <SectionHeader
+            eyebrow={t('home.cases.eyebrow')}
+            title={t('home.cases.title')}
+            subtitle={t('home.cases.sub')}
+          />
+        </Reveal>
+        <RevealStagger className="mt-14 grid grid-cols-1 md:grid-cols-3 gap-4">
+          {placeholders.map((p, i) => (
+            <RevealItem key={i}>
+              <div className="card-premium hover-lift !p-0 overflow-hidden h-full">
+                <div
+                  className="aspect-[4/3] relative overflow-hidden"
+                  style={{
+                    background: `linear-gradient(135deg, ${p.hue}33 0%, transparent 60%), radial-gradient(circle at 30% 30%, ${p.hue}22, transparent 60%)`,
+                  }}
+                >
+                  <div className="absolute inset-0 noise-overlay" />
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <ImageOff size={28} className="text-text-tertiary opacity-40" strokeWidth={1.5} />
+                  </div>
+                  <div className="absolute top-3 left-3">
+                    <span className="text-[10px] uppercase tracking-wider font-semibold bg-bg/80 backdrop-blur text-accent px-2 py-1 rounded-full border border-accent/20">
+                      {p.tag}
+                    </span>
+                  </div>
+                </div>
+                <div className="p-5">
+                  <div className="text-[10px] uppercase tracking-wider text-text-tertiary mb-1">{t('home.cases.placeholder.t')}</div>
+                  <p className="text-[13px] text-text-secondary leading-relaxed">{t('home.cases.placeholder.d')}</p>
+                </div>
+              </div>
+            </RevealItem>
+          ))}
+        </RevealStagger>
+        <Reveal className="mt-10 flex items-center justify-center gap-3 flex-wrap">
+          <p className="text-[13px] text-text-tertiary">{t('home.cases.cta')}</p>
+          <Link to="/contact" className="button-premium ghost focus-ring !py-1.5 !px-3 text-[12px]">
+            {t('home.cases.ctaBtn')} <ArrowRight size={12} />
+          </Link>
+        </Reveal>
+      </div>
+    </section>
+  )
+}
+
+// ══════════════════════════════════════════════════════════════
+//  TESTIMONIALS — placeholder until real quotes exist
+// ══════════════════════════════════════════════════════════════
+
+function Testimonials() {
+  const t = useT()
+  return (
+    <section className="py-20 md:py-28 px-6 border-t border-border">
+      <div className="max-w-[820px] mx-auto text-center">
+        <Reveal>
+          <SectionHeader
+            eyebrow={t('home.tts.eyebrow')}
+            title={t('home.tts.title')}
+            subtitle={t('home.tts.sub')}
+            centered
+          />
+        </Reveal>
+        <Reveal delay={0.1}>
+          <div className="mt-12 card-premium with-sheen !p-8 md:!p-10 relative">
+            <Quote size={22} className="text-accent/40 mx-auto mb-4" />
+            <p className="text-[14px] md:text-[15px] text-text-secondary leading-relaxed italic">
+              {t('home.tts.placeholder')}
+            </p>
+            <div className="mt-6 flex items-center justify-center gap-1 opacity-50">
+              {Array.from({ length: 3 }).map((_, i) => (
+                <span key={i} className="w-1.5 h-1.5 rounded-full bg-text-tertiary" />
+              ))}
+            </div>
+          </div>
+        </Reveal>
       </div>
     </section>
   )

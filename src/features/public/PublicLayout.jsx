@@ -4,11 +4,13 @@ import CookieConsent from '@/components/CookieConsent'
 import WelcomeLanguageModal from '@/i18n/WelcomeLanguageModal'
 import LanguageSwitcher from '@/i18n/LanguageSwitcher'
 import { useT } from '@/i18n/I18nProvider'
+import { ScrollProgress } from '@/components/ui/motion/ScrollProgress'
 
 export default function PublicLayout() {
   const t = useT()
   return (
     <div className="min-h-screen bg-bg flex flex-col">
+      <ScrollProgress />
       <WelcomeLanguageModal />
 
       {/* ── Navigation ── */}

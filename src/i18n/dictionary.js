@@ -250,6 +250,36 @@ export const dictionary = {
                              bcs: 'Zakazivane konsultacije uskoro stižu. Za sada nam pošaljite kratku poruku i odgovorit ćemo s nekoliko termina koji odgovaraju objema stranama.' },
   'home.book.send':        { en: 'Send a Message', bcs: 'Pošaljite poruku' },
 
+  // Numbers strip — by-the-numbers proof
+  'home.stats.eyebrow':    { en: 'By the numbers',                 bcs: 'U brojkama' },
+  'home.stats.respond.v':  { en: '< 2h',                           bcs: '< 2h' },
+  'home.stats.respond.l':  { en: 'Avg response time on care plans', bcs: 'Prosječno vrijeme odgovora na care planovima' },
+  'home.stats.ontime.v':   { en: '100%',                           bcs: '100%' },
+  'home.stats.ontime.l':   { en: 'On-time launches in the last year', bcs: 'Lansiranja na vrijeme u protekloj godini' },
+  'home.stats.languages.v':{ en: '2',                              bcs: '2' },
+  'home.stats.languages.l':{ en: 'Native languages — EN + BCS',    bcs: 'Maternja jezika — EN + BHS' },
+  'home.stats.region.v':   { en: '6+',                             bcs: '6+' },
+  'home.stats.region.l':   { en: 'Balkan countries served',        bcs: 'Zemalja u regionu uslužene' },
+
+  // Case studies / work-in-progress showcase
+  'home.cases.eyebrow':    { en: 'Selected work',                  bcs: 'Izabrani radovi' },
+  'home.cases.title':      { en: 'Real client projects, shipping now.', bcs: 'Stvarni klijentski projekti, u toku.' },
+  'home.cases.sub':        { en: 'Full case studies — design process, technical decisions, and measurable results — go live as projects ship and clients agree to share their stories.',
+                             bcs: 'Potpune studije slučaja — dizajn proces, tehničke odluke i mjerljivi rezultati — objavljujemo kako projekti budu lansirani i klijenti pristanu podijeliti svoje priče.' },
+  'home.cases.placeholder.t':{ en: 'Coming soon',                  bcs: 'Uskoro' },
+  'home.cases.placeholder.d':{ en: 'A new client website is launching in the coming weeks.',
+                                bcs: 'Nova klijentska stranica se lansira u narednim sedmicama.' },
+  'home.cases.cta':        { en: 'Want to be the next showcase?',  bcs: 'Želite biti sljedeći izlog?' },
+  'home.cases.ctaBtn':     { en: 'Start a project',                bcs: 'Pokrenite projekat' },
+
+  // Testimonials placeholder
+  'home.tts.eyebrow':      { en: 'Trusted by',                     bcs: 'Vjeruju nam' },
+  'home.tts.title':        { en: 'Premium businesses across the Balkans.', bcs: 'Premium firme širom Balkana.' },
+  'home.tts.sub':          { en: 'A growing roster of clients in dental, hospitality, professional services, and beyond. Testimonials publish here as projects wrap.',
+                             bcs: 'Rastuća lista klijenata u stomatologiji, hotelijerstvu, profesionalnim uslugama i šire. Preporuke objavljujemo kako projekti budu privedeni kraju.' },
+  'home.tts.placeholder':  { en: 'Real client quotes will appear here as we ship each project. We never invent testimonials.',
+                             bcs: 'Stvarni citati klijenata pojavit će se ovdje kako budemo isporučivali svaki projekat. Nikad ne izmišljamo preporuke.' },
+
   // Final CTA
   'home.cta.title':        { en: "Let's build something your customers actually use.",
                              bcs: 'Hajde da napravimo nešto što vaši klijenti zaista koriste.' },
