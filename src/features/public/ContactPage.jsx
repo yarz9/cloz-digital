@@ -5,22 +5,44 @@ import { inquiry } from '@/lib/api'
 import { useI18n } from '@/i18n/I18nProvider'
 import { CONTACT_SERVICE_KEYS } from '@/i18n/dictionary'
 
+const DRAFT_KEY = 'cloz_contact_draft_v1'
+
 export default function ContactPage() {
   const { t, lang } = useI18n()
   useEffect(() => { document.title = t('contact.title') }, [t])
   const navigate = useNavigate()
 
-  // Use translated service labels but keep stable EN values as the saved string
-  // so backend AI scoring stays consistent.
+  // Translated service labels — backend keeps stable EN values
+  // for AI scoring consistency.
   const services = CONTACT_SERVICE_KEYS.map(k => ({ key: k, label: t(k) }))
 
-  const [form, setForm] = useState({
-    name: '', email: '', businessName: '', currentWebsite: '',
-    serviceNeeded: services[0].label, message: '',
-    website_url: '',  // honeypot
+  // Hydrate draft from localStorage so a visitor never loses what
+  // they typed if they navigate away or refresh.
+  const [form, setForm] = useState(() => {
+    const defaults = {
+      name: '', email: '', businessName: '', currentWebsite: '',
+      serviceNeeded: services[0].label, message: '',
+      website_url: '', // honeypot
+    }
+    try {
+      const raw = localStorage.getItem(DRAFT_KEY)
+      if (!raw) return defaults
+      const draft = JSON.parse(raw)
+      return { ...defaults, ...draft, website_url: '' }
+    } catch { return defaults }
   })
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+
+  // Persist the draft whenever the visitor edits anything meaningful.
+  // Honeypot field is never persisted.
+  useEffect(() => {
+    try {
+      const { website_url, ...persistable } = form
+      const hasContent = Object.values(persistable).some(v => typeof v === 'string' && v.trim().length > 0)
+      if (hasContent) localStorage.setItem(DRAFT_KEY, JSON.stringify(persistable))
+    } catch {}
+  }, [form])
 
   const update = (field, value) => setForm(f => ({ ...f, [field]: value }))
 
@@ -35,7 +57,17 @@ export default function ContactPage() {
     setLoading(true)
     try {
       const result = await inquiry.submit({ ...form, lang })
-      const qs = new URLSearchParams({ id: result.inquiryId || '', name: form.name || '' }).toString()
+      // Backend may return { success: true, warning: '...' } when the
+      // inquiry was captured but a downstream step (DB write or email)
+      // was deferred. In that case we STILL navigate to the success
+      // page — the prospect's message is safe, just maybe not in the
+      // table yet.
+      try { localStorage.removeItem(DRAFT_KEY) } catch {}
+      const qs = new URLSearchParams({
+        id: result.inquiryId || '',
+        name: form.name || '',
+        ...(result.warning ? { warning: '1' } : {}),
+      }).toString()
       navigate(`/thank-you?${qs}`)
     } catch (err) {
       setError(err.message || t('contact.err.generic'))

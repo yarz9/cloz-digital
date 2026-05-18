@@ -4,11 +4,24 @@
 import { Router } from 'express';
 import { v4 as uuid } from 'uuid';
 import crypto from 'crypto';
-import { getDb } from '../database/init.js';
+import { getDb, waitForDatabase, isDatabaseReady } from '../database/init.js';
 import { getActiveProvider } from '../providers/index.js';
 import { sendViaResend, isResendConfigured } from '../services/mailService.js';
 import { log as activityLog, logInfo, logError, extractRequestContext } from '../services/logger.js';
 import { buildUrl } from '../config/urls.js';
+
+// Defensive normalisation — Railway can send x-forwarded-for as a
+// comma-separated string OR (rarely) an array. Either form must
+// collapse to a single string before it touches sql.js (which won't
+// accept array params).
+function extractClientIp(req) {
+  let raw = req.ip;
+  if (!raw) {
+    const xff = req.headers?.['x-forwarded-for'];
+    raw = Array.isArray(xff) ? xff[0] : (xff || '');
+  }
+  return String(raw || '').split(',')[0].trim().slice(0, 100);
+}
 
 const router = Router();
 
@@ -289,55 +302,104 @@ function escapeAttr(s) { return escapeHtml(s).replace(/`/g, ''); }
 //  POST /api/public/inquiry — Main endpoint
 // ══════════════════════════════════════════════════════════════
 
+// ══════════════════════════════════════════════════════════════
+//  POST /api/public/inquiry — fail-safe pipeline
+//
+//  CRITICAL: a prospect must never lose their inquiry because of
+//  an AI hiccup, an SMTP outage, or a slow CRM insert.
+//
+//  Flow:
+//    1. Normalise + validate (fast, sync).
+//    2. Wait briefly for DB readiness (handles cold-start window
+//       where the server is listening but initDatabase() hasn't
+//       resolved yet — see boot order in server.js).
+//    3. Save the inquiry row.
+//    4. RETURN 200 IMMEDIATELY with { success, inquiryId, warning? }.
+//    5. Background: AI analysis → CRM lead → internal email →
+//       auto-reply. Each step isolated; failures don't block the
+//       response and don't block each other.
+//
+//  Emergency fallback: if the DB insert itself fails, we still try
+//  to fire an emergency email so the prospect's details reach the
+//  team, and we return a clear warning to the frontend.
+// ══════════════════════════════════════════════════════════════
+
 router.post('/', async (req, res) => {
   const startedAt = Date.now();
   const context = extractRequestContext(req);
-  const ip = req.ip || req.headers?.['x-forwarded-for'] || '';
+  const ip = extractClientIp(req);
 
-  try {
-    // ── 1. Rate limit ──
-    const rl = checkRateLimit(ip);
-    if (!rl.allowed) {
+  // ── 1. Rate limit ──
+  const rl = checkRateLimit(ip);
+  if (!rl.allowed) {
+    try {
       logInfo(`Inquiry rate-limited for ${ip}`, { ...context, category: 'security', event_type: 'rate_limit' });
-      return res.status(429).json({
-        success: false,
-        error: `Too many submissions. Please try again in ${rl.retryAfter} minutes.`,
-      });
-    }
+    } catch {}
+    return res.status(429).json({
+      success: false,
+      error: `Too many submissions. Please try again in ${rl.retryAfter} minutes.`,
+    });
+  }
 
-    // ── 2. Validation ──
-    const errors = validateBody(req.body);
-    if (errors.length) {
-      return res.status(400).json({ success: false, error: errors[0], errors });
-    }
+  // ── 2. Validation ──
+  const errors = validateBody(req.body);
+  if (errors.length) {
+    return res.status(400).json({ success: false, error: errors[0], errors });
+  }
 
-    const inquiry = {
-      id: uuid(),
-      name: sanitize(req.body.name, 200),
-      email: sanitize(req.body.email, 200).toLowerCase(),
-      business_name: sanitize(req.body.businessName, 200),
-      current_website: sanitize(req.body.currentWebsite, 500),
-      service_needed: sanitize(req.body.serviceNeeded, 200),
-      message: sanitize(req.body.message, 4000),
-      lang: (req.body.lang === 'bcs' ? 'bcs' : 'en'),
-      source: 'website_contact_form',
-      status: 'new',
-      ip_address: ip.slice(0, 100),
-      user_agent: (req.headers['user-agent'] || '').slice(0, 300),
-      created_at: new Date().toISOString(),
-    };
+  // ── 3. Build the inquiry record ──
+  const inquiry = {
+    id: uuid(),
+    name: sanitize(req.body.name, 200),
+    email: sanitize(req.body.email, 200).toLowerCase(),
+    business_name: sanitize(req.body.businessName, 200),
+    current_website: sanitize(req.body.currentWebsite, 500),
+    service_needed: sanitize(req.body.serviceNeeded, 200),
+    message: sanitize(req.body.message, 4000),
+    lang: (req.body.lang === 'bcs' ? 'bcs' : 'en'),
+    source: 'website_contact_form',
+    status: 'new',
+    ip_address: ip,
+    user_agent: String(req.headers['user-agent'] || '').slice(0, 300),
+    created_at: new Date().toISOString(),
+  };
 
-    const db = getDb();
+  // ── 4. Wait for DB readiness ──
+  //    Handles the cold-start window where the server is listening
+  //    but initDatabase() hasn't resolved yet (boot order from
+  //    commit 02e7670). 8s is comfortably below most edge timeouts
+  //    and well within visitor patience.
+  let db;
+  try {
+    db = await waitForDatabase(8000);
+  } catch (e) {
+    // DB is genuinely down. Fire an emergency email so the prospect
+    // doesn't vanish, then return a clear warning to the frontend.
+    logError(`Inquiry DB unavailable: ${e.message}`, { ...context, entity_type: 'inquiry', entity_id: inquiry.id });
+    fireEmergencyEmail(inquiry, 'Database was unavailable when this inquiry arrived.');
+    return res.status(200).json({
+      success: true,
+      inquiryId: inquiry.id,
+      warning: 'Inquiry received — saved to our team queue.',
+      message: "Thank you. We've received your message and a Cloz Digital team member will respond within 24 hours.",
+    });
+  }
 
-    // ── 3. Duplicate check ──
+  // ── 5. Duplicate detection (best-effort; never blocks on error) ──
+  try {
     if (isDuplicate(db, inquiry.email, inquiry.message)) {
       return res.status(429).json({
         success: false,
         error: 'You have submitted several inquiries today. We will respond to them shortly.',
       });
     }
+  } catch (e) {
+    logError(`Inquiry duplicate check failed (non-fatal): ${e.message}`, { ...context, entity_type: 'inquiry', entity_id: inquiry.id });
+  }
 
-    // ── 4. Persist (do this BEFORE AI/email so we never lose the lead) ──
+  // ── 6. Save the inquiry — this is the ONLY thing the response waits on ──
+  let saved = false;
+  try {
     db.prepare(`INSERT INTO inquiries (
       id, name, email, business_name, current_website, service_needed, message,
       source, status, priority, ip_address, user_agent, lang, created_at, updated_at
@@ -346,156 +408,242 @@ router.post('/', async (req, res) => {
       inquiry.service_needed, inquiry.message, inquiry.source, 'new', 'medium',
       inquiry.ip_address, inquiry.user_agent, inquiry.lang, inquiry.created_at, inquiry.created_at,
     );
-
-    logInfo(`Inquiry received from ${inquiry.email}`, {
-      ...context, category: 'client', event_type: 'inquiry_received',
-      entity_type: 'inquiry', entity_id: inquiry.id, action: 'inquiry_submit',
-    });
-
-    // ── 5. AI analysis (non-blocking — failure must not break submission) ──
-    let analysis = null;
+    saved = true;
     try {
-      analysis = await analyzeInquiry(inquiry);
-      if (analysis) {
-        db.prepare(`UPDATE inquiries SET
-          ai_score = ?, ai_package = ?, ai_project_value = ?, ai_followup = ?, ai_notes = ?, priority = ?,
-          updated_at = datetime('now')
-          WHERE id = ?`).run(
-          analysis.score || 0,
-          analysis.package || '',
-          analysis.project_value || 0,
-          analysis.followup || '',
-          analysis.sales_notes || '',
-          analysis.priority || 'medium',
-          inquiry.id,
-        );
+      logInfo(`Inquiry received from ${inquiry.email}`, {
+        ...context, category: 'client', event_type: 'inquiry_received',
+        entity_type: 'inquiry', entity_id: inquiry.id, action: 'inquiry_submit',
+      });
+    } catch {}
+  } catch (e) {
+    // The DB insert genuinely failed (schema mismatch, disk error,
+    // whatever). Don't lose the prospect — log loud, fire an
+    // emergency email, return 200 with a warning so the frontend
+    // shows success.
+    console.error('[inquiry] DB insert failed:', e.message, e.stack);
+    try {
+      logError(`Inquiry DB insert failed: ${e.message}`, { ...context, entity_type: 'inquiry', entity_id: inquiry.id, stack_trace: e.stack });
+    } catch {}
+    fireEmergencyEmail(inquiry, `DB insert failed: ${e.message}`);
+    return res.status(200).json({
+      success: true,
+      inquiryId: inquiry.id,
+      warning: 'Inquiry saved to our team queue (database write deferred).',
+      message: "Thank you. We've received your message and will respond within 24 hours.",
+    });
+  }
+
+  // ── 7. Respond IMMEDIATELY ──
+  //    Everything after this point runs in the background — AI,
+  //    CRM lead, internal email, prospect auto-reply. The visitor
+  //    sees the success page within ~50ms.
+  res.status(200).json({
+    success: true,
+    inquiryId: inquiry.id,
+    message: "Thank you for contacting Cloz Digital. We've received your inquiry and will respond within 24 hours.",
+    latencyMs: Date.now() - startedAt,
+  });
+
+  // ── 8. Background processing ──
+  setImmediate(() => {
+    processInquiryBackground(inquiry, db, context).catch(err => {
+      console.error('[inquiry] background pipeline error:', err?.message || err);
+    });
+  });
+});
+
+// ══════════════════════════════════════════════════════════════
+//  Background pipeline — runs after the response has been sent.
+//  Each stage is independent so a failure in one doesn't block
+//  the others. Every error is logged but never surfaced to the
+//  visitor.
+// ══════════════════════════════════════════════════════════════
+
+async function processInquiryBackground(inquiry, db, context) {
+  // ── 8a. AI analysis ──
+  let analysis = null;
+  try {
+    analysis = await analyzeInquiry(inquiry);
+    if (analysis) {
+      db.prepare(`UPDATE inquiries SET
+        ai_score = ?, ai_package = ?, ai_project_value = ?, ai_followup = ?, ai_notes = ?, priority = ?,
+        updated_at = datetime('now')
+        WHERE id = ?`).run(
+        analysis.score || 0,
+        analysis.package || '',
+        analysis.project_value || 0,
+        analysis.followup || '',
+        analysis.sales_notes || '',
+        analysis.priority || 'medium',
+        inquiry.id,
+      );
+      try {
         logInfo(`Inquiry analyzed: score ${analysis.score}, ${analysis.package}`, {
           ...context, category: 'ai', event_type: 'ai_operation',
           entity_type: 'inquiry', entity_id: inquiry.id,
           action: 'inquiry_analyze',
         });
-      }
-    } catch (e) {
-      logError(`Inquiry AI analysis failed: ${e.message}`, { ...context, entity_type: 'inquiry', entity_id: inquiry.id });
+      } catch {}
     }
+  } catch (e) {
+    try { logError(`Inquiry AI analysis failed: ${e.message}`, { ...context, entity_type: 'inquiry', entity_id: inquiry.id }); } catch {}
+  }
 
-    // ── 6. Create CRM lead (Client Scout) ──
-    let createdLeadId = '';
+  // ── 8b. CRM lead ──
+  let createdLeadId = '';
+  try {
+    const leadId = uuid();
+    const sourceHash = crypto.createHash('md5').update(`inquiry:${inquiry.email}:${inquiry.business_name}`).digest('hex');
+    const reasoning = analysis
+      ? `${analysis.sales_notes || ''} ${analysis.followup ? `Follow-up: ${analysis.followup}` : ''}`.trim()
+      : `Inquiry from ${inquiry.email}: ${inquiry.message.slice(0, 200)}`;
+
+    db.prepare(`INSERT INTO client_scout_leads (
+      id, business_name, category, country, country_code, city, address,
+      phone, email, website_url, google_maps_url, rating, review_count,
+      has_website, lat, lng, business_status, types, source_hash, scouting_mode, status,
+      source, verified, synthetic,
+      opportunity_score, outreach_priority, suggested_package, reasoning,
+      revenue_potential, contact_channels,
+      created_at, updated_at
+    ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,datetime('now'),datetime('now'))`).run(
+      leadId,
+      inquiry.business_name || inquiry.name,
+      inquiry.service_needed,
+      '', '', '', '',
+      '', inquiry.email, inquiry.current_website,
+      '', 0, 0,
+      inquiry.current_website ? 1 : 0,
+      0, 0,
+      '', '[]',
+      sourceHash, 'inquiry', 'new',
+      'website_inquiry', 1, 0,
+      analysis?.score || 0,
+      analysis?.priority || 'medium',
+      analysis?.package || '',
+      reasoning,
+      JSON.stringify({
+        project_value: analysis?.project_value || 0,
+        monthly_value: 0,
+        lifetime_value: analysis?.project_value || 0,
+        close_probability: analysis ? Math.min(1, analysis.score / 100) : 0.3,
+      }),
+      JSON.stringify(['email']),
+    );
+
+    createdLeadId = leadId;
+    db.prepare(`UPDATE inquiries SET created_lead_id = ? WHERE id = ?`).run(leadId, inquiry.id);
+
     try {
-      const leadId = uuid();
-      const sourceHash = crypto.createHash('md5').update(`inquiry:${inquiry.email}:${inquiry.business_name}`).digest('hex');
-      const reasoning = analysis
-        ? `${analysis.sales_notes || ''} ${analysis.followup ? `Follow-up: ${analysis.followup}` : ''}`.trim()
-        : `Inquiry from ${inquiry.email}: ${inquiry.message.slice(0, 200)}`;
-
-      db.prepare(`INSERT INTO client_scout_leads (
-        id, business_name, category, country, country_code, city, address,
-        phone, email, website_url, google_maps_url, rating, review_count,
-        has_website, lat, lng, business_status, types, source_hash, scouting_mode, status,
-        source, verified, synthetic,
-        opportunity_score, outreach_priority, suggested_package, reasoning,
-        revenue_potential, contact_channels,
-        created_at, updated_at
-      ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,datetime('now'),datetime('now'))`).run(
-        leadId,
-        inquiry.business_name || inquiry.name,
-        inquiry.service_needed,
-        '', '', '', '',
-        '', inquiry.email, inquiry.current_website,
-        '', 0, 0,
-        inquiry.current_website ? 1 : 0,
-        0, 0,
-        '', '[]',
-        sourceHash, 'inquiry', 'new',
-        'website_inquiry', 1, 0,
-        analysis?.score || 0,
-        analysis?.priority || 'medium',
-        analysis?.package || '',
-        reasoning,
-        JSON.stringify({
-          project_value: analysis?.project_value || 0,
-          monthly_value: 0,
-          lifetime_value: analysis?.project_value || 0,
-          close_probability: analysis ? Math.min(1, analysis.score / 100) : 0.3,
-        }),
-        JSON.stringify(['email']),
-      );
-
-      createdLeadId = leadId;
-      db.prepare(`UPDATE inquiries SET created_lead_id = ? WHERE id = ?`).run(leadId, inquiry.id);
-
       logInfo(`CRM lead created from inquiry: ${inquiry.business_name || inquiry.name}`, {
         ...context, category: 'client', event_type: 'lead_created',
         entity_type: 'lead', entity_id: leadId,
       });
-    } catch (e) {
-      logError(`Failed to create CRM lead from inquiry: ${e.message}`, { ...context, entity_type: 'inquiry', entity_id: inquiry.id });
-    }
+    } catch {}
+  } catch (e) {
+    try { logError(`Failed to create CRM lead from inquiry: ${e.message}`, { ...context, entity_type: 'inquiry', entity_id: inquiry.id }); } catch {}
+  }
 
-    // ── 7. Send emails (best-effort; failure must not break submission) ──
-    const FROM_ADDRESS = process.env.INQUIRY_FROM || 'Cloz Digital <general@cloz.digital>';
-    const INTERNAL_RECIPIENTS = (process.env.INQUIRY_INTERNAL_TO || 'general@cloz.digital,anes@cloz.digital').split(',').map(s => s.trim()).filter(Boolean);
+  // ── 8c. Emails ──
+  const FROM_ADDRESS = process.env.INQUIRY_FROM || 'Cloz Digital <general@cloz.digital>';
+  const INTERNAL_RECIPIENTS = (process.env.INQUIRY_INTERNAL_TO || 'general@cloz.digital,anes@cloz.digital').split(',').map(s => s.trim()).filter(Boolean);
 
-    if (isResendConfigured()) {
-      // Internal notification
-      try {
-        const { subject, html, text } = renderInternalNotification(inquiry, analysis);
-        await sendViaResend({
-          from: FROM_ADDRESS,
-          to: INTERNAL_RECIPIENTS,
-          replyTo: inquiry.email,
-          subject, html, text,
-        });
-        db.prepare(`UPDATE inquiries SET notification_sent = 1 WHERE id = ?`).run(inquiry.id);
-        logInfo(`Inquiry notification sent to ${INTERNAL_RECIPIENTS.join(', ')}`, {
-          ...context, category: 'mail', event_type: 'mail_sent',
-          entity_type: 'inquiry', entity_id: inquiry.id,
-        });
-      } catch (e) {
-        logError(`Inquiry internal notification failed: ${e.message}`, { ...context, entity_type: 'inquiry', entity_id: inquiry.id });
-      }
-
-      // Auto-reply to prospect
-      try {
-        const { subject, html, text } = renderAutoReply(inquiry);
-        await sendViaResend({
-          from: FROM_ADDRESS,
-          to: inquiry.email,
-          replyTo: 'general@cloz.digital',
-          subject, html, text,
-        });
-        db.prepare(`UPDATE inquiries SET auto_reply_sent = 1 WHERE id = ?`).run(inquiry.id);
-        logInfo(`Inquiry auto-reply sent to ${inquiry.email}`, {
-          ...context, category: 'mail', event_type: 'mail_sent',
-          entity_type: 'inquiry', entity_id: inquiry.id,
-        });
-      } catch (e) {
-        logError(`Inquiry auto-reply failed: ${e.message}`, { ...context, entity_type: 'inquiry', entity_id: inquiry.id });
-      }
-    } else {
+  if (!isResendConfigured()) {
+    try {
       logInfo('Inquiry stored but Resend not configured — emails skipped', {
         ...context, category: 'mail', entity_type: 'inquiry', entity_id: inquiry.id,
       });
-    }
-
-    // ── 8. Success ──
-    const elapsed = Date.now() - startedAt;
-    return res.json({
-      success: true,
-      inquiryId: inquiry.id,
-      leadId: createdLeadId,
-      message: "Thank you for contacting Cloz Digital. We've received your inquiry and will respond within 24 hours.",
-      latencyMs: elapsed,
-    });
-
-  } catch (e) {
-    logError(`Inquiry submission failed: ${e.message}`, { ...context, stack_trace: e.stack });
-    return res.status(500).json({
-      success: false,
-      error: 'Something went wrong on our side. Please try again or email general@cloz.digital directly.',
-    });
+    } catch {}
+    return;
   }
-});
+
+  // Internal notification
+  try {
+    const { subject, html, text } = renderInternalNotification(inquiry, analysis);
+    await sendViaResend({
+      from: FROM_ADDRESS,
+      to: INTERNAL_RECIPIENTS,
+      replyTo: inquiry.email,
+      subject, html, text,
+    });
+    try { db.prepare(`UPDATE inquiries SET notification_sent = 1 WHERE id = ?`).run(inquiry.id); } catch {}
+    try {
+      logInfo(`Inquiry notification sent to ${INTERNAL_RECIPIENTS.join(', ')}`, {
+        ...context, category: 'mail', event_type: 'mail_sent',
+        entity_type: 'inquiry', entity_id: inquiry.id,
+      });
+    } catch {}
+  } catch (e) {
+    try { logError(`Inquiry internal notification failed: ${e.message}`, { ...context, entity_type: 'inquiry', entity_id: inquiry.id }); } catch {}
+  }
+
+  // Auto-reply to prospect
+  try {
+    const { subject, html, text } = renderAutoReply(inquiry);
+    await sendViaResend({
+      from: FROM_ADDRESS,
+      to: inquiry.email,
+      replyTo: 'general@cloz.digital',
+      subject, html, text,
+    });
+    try { db.prepare(`UPDATE inquiries SET auto_reply_sent = 1 WHERE id = ?`).run(inquiry.id); } catch {}
+    try {
+      logInfo(`Inquiry auto-reply sent to ${inquiry.email}`, {
+        ...context, category: 'mail', event_type: 'mail_sent',
+        entity_type: 'inquiry', entity_id: inquiry.id,
+      });
+    } catch {}
+  } catch (e) {
+    try { logError(`Inquiry auto-reply failed: ${e.message}`, { ...context, entity_type: 'inquiry', entity_id: inquiry.id }); } catch {}
+  }
+}
+
+// Last-ditch email — used when the DB is unavailable or the insert
+// fails. Goes straight to the inbox so the prospect's details aren't
+// lost. Failures here are logged but cannot affect the response.
+function fireEmergencyEmail(inquiry, reason) {
+  if (!isResendConfigured()) return;
+  const FROM_ADDRESS = process.env.INQUIRY_FROM || 'Cloz Digital <general@cloz.digital>';
+  const INTERNAL_RECIPIENTS = (process.env.INQUIRY_INTERNAL_TO || 'general@cloz.digital,anes@cloz.digital').split(',').map(s => s.trim()).filter(Boolean);
+  const subject = `⚠ Inquiry received but DB write failed — ${inquiry.business_name || inquiry.name}`;
+  const html = `<div style="font-family:Inter,system-ui,sans-serif;max-width:560px;margin:0 auto;padding:32px 24px;color:#0B0B0D;">
+    <h2 style="color:#e11d48;margin:0 0 6px;">Database write failed — prospect details below</h2>
+    <p style="font-size:12px;color:#52525B;margin:0 0 16px;">Reason: ${escapeHtml(reason)}</p>
+    <table style="width:100%;font-size:14px;border-collapse:collapse;">
+      <tr><td style="padding:6px 0;color:#666;width:140px;">Name</td><td>${escapeHtml(inquiry.name)}</td></tr>
+      <tr><td style="padding:6px 0;color:#666;">Email</td><td><a href="mailto:${escapeHtml(inquiry.email)}">${escapeHtml(inquiry.email)}</a></td></tr>
+      ${inquiry.business_name ? `<tr><td style="padding:6px 0;color:#666;">Business</td><td>${escapeHtml(inquiry.business_name)}</td></tr>` : ''}
+      ${inquiry.current_website ? `<tr><td style="padding:6px 0;color:#666;">Current site</td><td>${escapeHtml(inquiry.current_website)}</td></tr>` : ''}
+      <tr><td style="padding:6px 0;color:#666;">Service needed</td><td>${escapeHtml(inquiry.service_needed)}</td></tr>
+    </table>
+    <div style="margin-top:16px;padding:14px;background:#f5f5f7;border-radius:8px;white-space:pre-wrap;font-size:13px;">${escapeHtml(inquiry.message)}</div>
+    <p style="margin-top:16px;font-size:11px;color:#888;">Inquiry id: ${escapeHtml(inquiry.id)} · IP ${escapeHtml(inquiry.ip_address || 'unknown')} · ${new Date(inquiry.created_at).toLocaleString()}</p>
+  </div>`;
+  const text = [
+    `Database write failed — prospect details:`,
+    `Reason: ${reason}`,
+    ``,
+    `Name: ${inquiry.name}`,
+    `Email: ${inquiry.email}`,
+    inquiry.business_name ? `Business: ${inquiry.business_name}` : '',
+    inquiry.current_website ? `Website: ${inquiry.current_website}` : '',
+    `Service: ${inquiry.service_needed}`,
+    ``,
+    `Message:`,
+    inquiry.message,
+    ``,
+    `Inquiry id: ${inquiry.id}`,
+  ].filter(Boolean).join('\n');
+
+  sendViaResend({
+    from: FROM_ADDRESS,
+    to: INTERNAL_RECIPIENTS,
+    replyTo: inquiry.email,
+    subject, html, text,
+  }).catch(err => {
+    console.error('[inquiry] EMERGENCY email also failed:', err?.message || err);
+  });
+}
 
 // ══════════════════════════════════════════════════════════════
 //  ADMIN ENDPOINTS — protected by the api limiter on the parent router

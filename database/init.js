@@ -1176,3 +1176,23 @@ export function getDb() {
   if (!db) throw new Error('Database not initialized. Call initDatabase() first.');
   return db;
 }
+
+// Boot-window helpers — used by user-facing endpoints (e.g. the
+// public inquiry form) that may receive a request during the
+// async-init window after app.listen() but before initDatabase()
+// has resolved (see server.js boot order, commit 02e7670).
+export function isDatabaseReady() {
+  return !!db;
+}
+
+export async function waitForDatabase(timeoutMs = 8000) {
+  if (db) return db;
+  const started = Date.now();
+  while (!db) {
+    if (Date.now() - started > timeoutMs) {
+      throw new Error(`Database not ready after ${timeoutMs}ms.`);
+    }
+    await new Promise(r => setTimeout(r, 50));
+  }
+  return db;
+}
