@@ -99,24 +99,20 @@ app.use(requestLoggerMiddleware);
 app.use(auditMiddleware);
 
 // ── Standalone health check (Railway uses this) ──
+// MUST return 200 with no DB, provider, or any other side-effects.
+// Railway polls this URL during deploy to mark the container healthy;
+// any throw, slow query, or 503 fails the deployment.
+// The richer "deep" health endpoint lives at /api/health and exercises
+// the DB + provider once startup is complete.
+const bootState = { ready: false, phase: 'starting', error: null, started_at: new Date().toISOString() };
 app.get('/health', (_req, res) => {
-  try {
-    const provider = getActiveProvider();
-    res.json({
-      status: 'ok',
-      provider: 'cerebras',
-      model: resolveModel('generate'),
-      version: pkg.version,
-      timestamp: new Date().toISOString(),
-    });
-  } catch (e) {
-    res.status(503).json({
-      status: 'error',
-      error: e.message,
-      version: pkg.version,
-      timestamp: new Date().toISOString(),
-    });
-  }
+  res.status(200).json({
+    status: 'ok',
+    ready: bootState.ready,
+    phase: bootState.phase,
+    version: pkg.version,
+    timestamp: new Date().toISOString(),
+  });
 });
 
 // ── Static file serving ──
@@ -205,93 +201,151 @@ process.on('unhandledRejection', (reason) => {
   console.error('[Fatal] Unhandled rejection:', reason);
 });
 
-// ── Persistence guard: refuse to start in production if the database
-//    is being written to ephemeral storage. This prevents the #1 cause
-//    of "my data disappeared on redeploy" — running on Railway without
-//    a mounted Volume + DATA_DIR.
-function enforcePersistence() {
+// ── Persistence guard: WARN (do not exit) when running in production
+//    without a recognised persistent volume. Previously this called
+//    process.exit(1), which crashed Railway containers before they
+//    could respond to /health on the first deploy of a project that
+//    hadn't yet been configured with DATA_DIR=/data + a mounted Volume.
+//    The Persistence Center UI surfaces the same state for the
+//    operator, so a noisy log + non-blocking startup is the right
+//    trade-off.
+//
+//    Hard-fail can be re-enabled by setting REQUIRE_PERSISTENT_STORAGE=1.
+function checkPersistence() {
   const info = getStorageInfo();
-  if (info.isProduction && info.isRailway && !info.persistent) {
-    // Allow an explicit opt-out for emergencies, but make it noisy.
-    if (process.env.ALLOW_EPHEMERAL_STORAGE === '1') {
-      console.error('');
-      console.error('  ⚠️  RUNNING ON EPHEMERAL STORAGE (ALLOW_EPHEMERAL_STORAGE=1)');
-      console.error('     Data WILL be lost on next redeploy. Set DATA_DIR=/data and');
-      console.error('     mount a Railway Volume at /data as soon as possible.');
-      console.error('');
-      return;
-    }
-    console.error('');
-    console.error('  ✗ REFUSING TO START — persistent storage not detected.');
-    console.error('');
-    console.error('    The database file would be written to:');
-    console.error(`      ${info.dbPath}`);
-    console.error('');
-    console.error('    Any data created on this instance would be permanently lost on');
-    console.error('    the next redeploy. To fix:');
-    console.error('      1) In Railway → Settings → Volumes, add a Volume mounted at /data');
-    console.error('      2) In Railway → Variables, set DATA_DIR=/data');
-    console.error('      3) Redeploy.');
-    console.error('');
-    console.error('    Emergency override (NOT for production): set ALLOW_EPHEMERAL_STORAGE=1');
+  if (!info.isProduction || !info.isRailway || info.persistent) return { ok: true };
+
+  console.error('');
+  console.error('  ⚠️  PERSISTENCE WARNING — ephemeral storage detected');
+  console.error('     The database file is being written to:');
+  console.error(`       ${info.dbPath}`);
+  console.error('     This path will be wiped on the next Railway redeploy.');
+  console.error('     To fix:');
+  console.error('       1) Railway → Settings → Volumes → add a Volume mounted at /data');
+  console.error('       2) Railway → Variables → set DATA_DIR=/data');
+  console.error('       3) Redeploy.');
+  console.error('');
+
+  if (process.env.REQUIRE_PERSISTENT_STORAGE === '1') {
+    console.error('  ✗ REQUIRE_PERSISTENT_STORAGE=1 set — exiting.');
     console.error('');
     process.exit(1);
+  }
+  return { ok: false, warning: 'ephemeral' };
+}
+
+// Wrap a phase so a single failure doesn't kill the whole boot.
+// Logs explicitly; updates bootState so /health surfaces the phase.
+function phase(name, fn) {
+  bootState.phase = name;
+  const started = Date.now();
+  try {
+    const result = fn();
+    console.log(`  ✓ ${name.padEnd(28)} ${Date.now() - started}ms`);
+    return { ok: true, result };
+  } catch (err) {
+    console.error(`  ✗ ${name.padEnd(28)} FAILED — ${err.message}`);
+    if (err.stack) console.error(err.stack.split('\n').slice(1, 4).join('\n'));
+    return { ok: false, error: err };
   }
 }
 
 // ── Boot ──
+// CRITICAL ORDER: bind the port FIRST so Railway's /health probe gets
+// 200 immediately. Then run database init + seeders + workers in the
+// background. Until the background init completes, /health reports
+// status: ok + ready: false + phase: <current phase> so an operator
+// can tell whether the server is healthy at the network level vs. at
+// the application level.
+//
+// If init crashes, /health still returns 200 (the process keeps
+// running) — actual route handlers will return their own errors when
+// hit. Better than the container dying and Railway looping into
+// failed-deploy hell.
 (async () => {
+  process.env.BOOT_TIME = new Date().toISOString();
+
+  // 1. Bind the port FIRST. /health is registered above this in the
+  //    request pipeline, so it will respond as soon as Express is
+  //    listening — irrespective of DB init progress.
+  app.listen(PORT, () => {
+    console.log(`\n  Cloz Digital v${pkg.version}`);
+    console.log(`  ─────────────────────────────────────`);
+    console.log(`  Port:       ${PORT}  (listening — /health is live)`);
+    console.log(`  Env:        ${process.env.NODE_ENV || 'development'}`);
+    console.log(`  ─────────────────────────────────────`);
+  });
+
+  // 2. Soft persistence check — warn, don't crash.
+  checkPersistence();
+
+  // 3. Database init.
+  let db;
   try {
-    enforcePersistence();
-    process.env.BOOT_TIME = new Date().toISOString();
-    const db = await initDatabase();
-    ensureActivityLogsTable(db);
-    seedDefaults(db);
-    seedMailAccounts(db);
-    seedOps(db);
-    seedKnowledge(db);
+    bootState.phase = 'initDatabase';
+    const started = Date.now();
+    db = await initDatabase();
+    console.log(`  ✓ initDatabase                ${Date.now() - started}ms`);
+    console.log(`  Database:   ${getDbPath()}`);
+  } catch (err) {
+    console.error('  ✗ initDatabase                FAILED —', err.message);
+    console.error(err.stack);
+    bootState.error = err.message;
+    bootState.phase = 'failed:initDatabase';
+    return; // server stays up; /health still returns ok+ready:false
+  }
 
-    // Invalidate any portal magic links issued before the canonical-URL fix.
-    // Those emails contained verify URLs on the unregistered subdomain and
-    // fail DNS resolution. A fresh sign-in request will issue a new working link.
-    try {
-      const cutoff = '2026-05-16T00:00:00';
-      const result = db.prepare(`UPDATE portal_magic_links SET consumed_at = datetime('now') WHERE consumed_at = '' AND created_at < ?`).run(cutoff);
-      if (result.changes > 0) {
-        console.log(`[boot] Invalidated ${result.changes} pre-fix portal magic link(s)`);
-      }
-    } catch {}
+  // 4. Seeders + table ensures — each isolated so one failure can't
+  //    block the rest. Order matters only for activity_logs (logger
+  //    middleware writes to it), which we do first.
+  phase('ensureActivityLogsTable', () => ensureActivityLogsTable(db));
+  phase('seedDefaults',            () => seedDefaults(db));
+  phase('seedMailAccounts',        () => seedMailAccounts(db));
+  phase('seedOps',                 () => seedOps(db));
+  phase('seedKnowledge',           () => seedKnowledge(db));
 
-    // Start mail background workers
-    startSyncWorker();
-    startSendQueueProcessor();
+  // 5. One-off cleanup (pre-canonical-URL magic links).
+  phase('expirePreFixMagicLinks',  () => {
+    const cutoff = '2026-05-16T00:00:00';
+    const result = db.prepare(`UPDATE portal_magic_links SET consumed_at = datetime('now') WHERE consumed_at = '' AND created_at < ?`).run(cutoff);
+    if (result.changes > 0) {
+      console.log(`     · invalidated ${result.changes} pre-fix portal magic link(s)`);
+    }
+  });
 
-    // Start the persistence snapshot scheduler (one snapshot at boot, then daily)
-    startSnapshotScheduler();
+  // 6. Background workers. Failures here are non-fatal — the API
+  //    continues serving without IMAP sync / outbound mail / snapshots.
+  phase('startSyncWorker',          () => startSyncWorker());
+  phase('startSendQueueProcessor',  () => startSendQueueProcessor());
+  phase('startSnapshotScheduler',   () => startSnapshotScheduler());
 
+  // 7. Provider warm-up — for the startup banner only. Not required
+  //    for /health; provider lazy-initialises on first /api request.
+  let providerInfo = '(not initialised)';
+  try {
     const provider = getActiveProvider();
     const defaultModel = resolveModel('generate');
-
-    app.listen(PORT, () => {
-      console.log(`\n  Cloz Digital v${pkg.version} — Production Ready`);
-      console.log(`  ─────────────────────────────────────`);
-      console.log(`  Port:       ${PORT}`);
-      console.log(`  Env:        ${process.env.NODE_ENV || 'development'}`);
-      console.log(`  Database:   ${getDbPath()}`);
-      console.log(`  Provider:   cerebras`);
-      console.log(`  Model:      ${defaultModel}`);
-      console.log(`  API Key:    ${provider.getMaskedKey()}`);
-      console.log(`  ─────────────────────────────────────`);
-      console.log(`  → App:      http://localhost:${PORT}/`);
-      console.log(`  → Admin:    http://localhost:${PORT}/admin`);
-      console.log(`  → Health:   http://localhost:${PORT}/health`);
-      console.log(`  → API:      http://localhost:${PORT}/api/health`);
-      logStorageInfo();
-      console.log('');
-    });
-  } catch (err) {
-    console.error('\n  ✗ Failed to start Cloz Digital:', err.message);
-    console.error(err.stack);
-    process.exit(1);
+    providerInfo = `cerebras · ${defaultModel} · ${provider.getMaskedKey()}`;
+  } catch (e) {
+    console.error('  ⚠ provider warm-up skipped —', e.message);
   }
-})();
+
+  bootState.ready = true;
+  bootState.phase = 'ready';
+  console.log(`  ─────────────────────────────────────`);
+  console.log(`  Provider:   ${providerInfo}`);
+  console.log(`  Boot:       ${Math.round((Date.now() - new Date(bootState.started_at).getTime()) / 1000)}s`);
+  console.log(`  ─────────────────────────────────────`);
+  console.log(`  → App:      http://localhost:${PORT}/`);
+  console.log(`  → Admin:    http://localhost:${PORT}/admin`);
+  console.log(`  → Health:   http://localhost:${PORT}/health`);
+  console.log(`  → API:      http://localhost:${PORT}/api/health`);
+  try { logStorageInfo() } catch {}
+  console.log('');
+})().catch(err => {
+  // Outer-level safety net — should never fire now that each phase
+  // is wrapped, but keeps us alive even if the IIFE itself throws.
+  console.error('[Fatal] Boot IIFE threw —', err);
+  bootState.error = err.message;
+  bootState.phase = 'failed:boot';
+});
